@@ -1,0 +1,62 @@
+---------------------
+listeners.py
+---------------------
+
+   Collection of Stomp listeners to connect to ActiveMQ / Messaging center
+
+---------------------
+models.py
+---------------------
+
+   Currently used just for command classes in python.  Incoming json is converted to command
+
+---------------------
+myutil.py
+---------------------
+
+   utility methods for python scripts
+
+---------------------
+next-check-point.sh
+---------------------
+
+   This may be combined into utility bash script.  Will eventually provide failsafe in case merges need to be reset or commits reverted
+
+---------------------
+notify.py
+---------------------
+
+   This is used to broadcast messages to the command center, and may actually direct messages to Thalamus directly
+
+---------------------
+proto-merge.sh
+---------------------
+
+   Bash script to merge commits from prototype branch or repository into specific branch-set.  If student_id (branch name) is provided,
+   the script will merge only into that student.  This is useful if the repository was designed to be self paced, or if using a competition
+   style presentation instead of a unified course.
+
+---------------------
+setenv.sh
+---------------------
+
+   Utility bash functions, global variables and directory listings.
+
+---------------------
+setup-class-branches.sh
+---------------------
+
+   This is used to create the student repositories, bare upstream clones and internal working trees
+
+---------------------
+thalamus.py
+---------------------
+
+   This will function as the logical switching station for pythonic logic.  Eventually will control more.  Primarily listens and reacts
+   to messages provided by JMS clients and git hooks.
+
+---------------------
+hooks:
+---------------------
+
+   This directory serves as the template for git-hooks required to establish flow.
