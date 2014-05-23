@@ -18,7 +18,7 @@ var express = require('express'),
     var hostname = options.dockerOpts.hostname;
     var port = options.port;
         internalPort = options.internalPort || 8888;
-
+        
     var redisPort = process.env.DB_PORT_6379_TCP_PORT,
         redisHost = process.env.DB_PORT_6379_TCP_ADDR;
 
@@ -38,14 +38,7 @@ var express = require('express'),
           cache_ttl: 5
        });
 
-    var proxy = httpProxy.createProxyServer({});
-
-    var containerProxy = function(req, res, route) {
-        if(!!route) 
-            proxy.web(req, res, { 
-                target: { host: route.host, port: route.port } 
-            });
-    };
+    var proxy = httpProxy.createProxyServer({target: 'http://172.17.0.5:80'});
 
     /*
      if container is used, no good, error
@@ -70,7 +63,7 @@ var express = require('express'),
                         proxyRouter.isContainerFree(wObj.workspace, function(isOk) {
                             if(isOk) {
                                 proxyRouter.setSessionForContainer('SOMEBODY_SESSION', wObj.workspace);
-                                proxyRouter.setRouteForContainer(wObj.workspace, (hostname+':'+ wObj.port));
+                                proxyRouter.setRouteForContainer(wObj.workspace, wObj.ip, wObj.port);
                                 var urlParts = url.parse(req.url);
                                 var TEMP_location = 'http://'+wObj.workspace+'.localhost.com';
                                 res.writeHead(302, { location: TEMP_location });
@@ -89,9 +82,10 @@ var express = require('express'),
         console.log('Proxy error: '+err);
     });
 
-    http.createServer(function(req, res) {
 
-       console.log("Received a request");
+    var proxyServer = http.createServer(function(req, res) {
+
+       //console.log("Received a request");
 
        var urlParts = url.parse(req.url, true);
        // get from cookie, fallback to url TODO
@@ -108,21 +102,31 @@ var express = require('express'),
              //     res.writeHead(500);
              //     res.end();
        } else if(locAction === 'test') {
-           proxy.web(req, res, 
-                   { target: { host: host, port: internalPort } 
-                   });
+           proxy.web(req, res, { target: ('http://localhost:8888') });
        } else { // 3. Container in URL
            proxyRouter.lookupRouteForContainer(locAction, function(route) {
                if(route) { // redirect to container
-                   proxy.web(req, res, {
-                       target: { host: route.host, port: route.port }
-                   });
+                   proxy.web(req, res); 
+                     // ,{
+                       //target: ('http://'+route.host+':'+route.port)
+                  // }); 
                } else throw new Error('404 Workspace Not Found');
              //     res.writeHead(404);
              //     res.end();
            });
        }
-    }).listen(port);
+    });
+
+    proxyServer.on('upgrade', function(req, socket, head) {
+        console.log('upgrade received');
+        proxy.ws(req, socket, head, { target: 'http://172.17.0.5:80'});
+    });
+
+    proxyServer.on('error', function(err) {
+        console.log('proxyServer error: '+err);
+    });
+    
+    proxyServer.listen(port);
 
 
 /*--------------------------------------------------------------------------------
@@ -194,7 +198,7 @@ var express = require('express'),
             runners['c9'].run([userId, kataId], kataId, function(err, job) {
                 job.instrument(util
                     .format('received cloud9 workspace for user %s,  challenge %s', userId, kataId));
-                res.send({ workspace: job.workspace, port: job.commPort });
+                res.send({ workspace: job.workspace, ip: job.ipAddr, port: job.commPort });
             });
         } catch(err) {
             if(err) console.log('ERR: '+err);
@@ -270,5 +274,5 @@ var express = require('express'),
 
         runners[req.params.runner].run([cStream], kataId, cb);
     });
-    app.listen(this.internalPort);
+    app.listen(internalPort);
 })(config);

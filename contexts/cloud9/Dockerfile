@@ -16,6 +16,7 @@ RUN npm install formidable@latest
 RUN npm install gnu-tools@latest
  
 #EXPOSE 3131
+EXPOSE 80
 
 #screen -S cloud9server -L -dm bash -c "cd cloud9; sudo ./bin/cloud9.sh -l 0.0.0.0 -p 3131"
 # Fix this - add screen or forever, and make it an entrypoint

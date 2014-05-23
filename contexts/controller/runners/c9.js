@@ -30,9 +30,8 @@ module.exports = {
                 return;
             }
             var startOpts = {
-                Binds: ["/user_data/workspaces/"+workspace+":/workspace"],
+                Binds: ["/user_data/workspaces/"+workspace+":/workspace"]
                 //PortBindings: { "3131/tcp": [{ HostPort: "3131", HostIp: "0.0.0.0" }] }
-                PublishAllPorts: true
             }
             cb(null, startOpts);
         },
@@ -41,9 +40,11 @@ module.exports = {
             cb(null, this);
         },
         started: function(details, poolCB) {
-            this.commPort = null;
+            this.commPort = '80'; // This is in config anyway now, and we can stop publishing to host
+            this.ipAddr = null;
             try {
-                this.commPort = details.NetworkSettings.Ports['3131/tcp'][0].HostPort;
+                // this.commPort = details.NetworkSettings.Ports['3131/tcp'][0].HostPort;
+                this.ipAddr = details.NetworkSettings.IPAddress;
             } catch(cex) {
                 console.log('Error: '+cex);
             }

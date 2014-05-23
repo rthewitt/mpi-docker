@@ -44,7 +44,7 @@ var ConfigureDocker = function(config) {
         var options = {
             Image: (config.repo+':'+runnerConfig.image),
             Memory: runnerConfig.memory,
-            ExposedPorts: runnerConfig.exposed,
+            //ExposedPorts: runnerConfig.exposed, // TODO add back if necessary, placed into Dockerfile
             Volumes: runnerConfig.volumes,
             AttachStdin: true,
             AttachStdout: true,
@@ -52,7 +52,7 @@ var ConfigureDocker = function(config) {
             OpenStdin: true,
             StdinOnce: false,
             Tty: false,
-            Env: ["RUNNER="+runnerConfig.name],
+            Env: ["RUNNER="+runnerConfig.name, "PORT=80"],
             Cmd: runnerConfig.cmd
         };
 

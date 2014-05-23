@@ -21,7 +21,7 @@ config.runners = [
         cmd: ["/cloud9/bin/cloud9.sh", "-l", "0.0.0.0", "-w", "/workspace"],
         memory: MEM_BASE,
         volumes: { "/workspace": {} },
-        exposed: { "3131/tcp": {} },
+        exposed: { "80/tcp": {} },
         pool: {
             //idleTimeoutMillis: 9000000,
             refreshIdle: false,

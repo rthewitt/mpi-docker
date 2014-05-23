@@ -44,7 +44,8 @@ ProxyRouter.prototype.isContainerFree = function(containerId, callback) {
    });
 }
 
-ProxyRouter.prototype.setRouteForContainer = function(containerId, route) {
+ProxyRouter.prototype.setRouteForContainer = function(containerId, ip, port) {
+    var route = (ip+':'+port);
     this.client.hset('routes', containerId, route, redis.print);
 }
 
