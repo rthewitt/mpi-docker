@@ -25,8 +25,8 @@ config.runners = [
         pool: {
             //idleTimeoutMillis: 9000000,
             refreshIdle: false,
-            max: 2,
-            min: 10, 
+            max: 4,
+            min: 1, 
             log: false
         },
         active: true

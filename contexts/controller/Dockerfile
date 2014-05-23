@@ -1,8 +1,10 @@
 FROM codewars:nvmnode
 MAINTAINER Ryan Hewitt "rthewitt.devel@gmail.com"
 
-# Change this and noderunner
-USER noderunner
+# Is this more or less secure?
+USER root
+
+VOLUME ["/user_data"]
 
 ADD . /opt/docker-runner
 ADD env.sh /usr/local/bin/run

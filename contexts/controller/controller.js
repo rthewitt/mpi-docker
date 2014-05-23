@@ -72,13 +72,14 @@ var ConfigureDocker = function(config) {
             }
         }
 
-        dr.prototype.run = function(jobArgs, finalCB, clientToken) {
+        dr.prototype.run = function(jobArgs, clientToken, finalCB) {
             this.pool.acquire(function(err, job){
                 if(err) throw err; 
                 job.initialTime = Date.now();
                 job.finalCB = finalCB;
                 if(!!clientToken) job.report('Job passed with client token: ' + clientToken);
                 if(!!job.hook.run) {
+                    jobArgs.push(finalCB);
                     job.hook.run.apply(job, jobArgs);
                 }
             });
@@ -242,6 +243,7 @@ var ConfigureDocker = function(config) {
             });
         }
 
+        // SUCH UGLY, UGLY CALLBACK CODE FIXME
         var thisRunner = new dr();
         if(!!runnerConfig.active) {
             thisRunner.pool = poolModule.Pool({
@@ -252,15 +254,20 @@ var ConfigureDocker = function(config) {
                         if(!err) {
                             if(!!res.Id) {
                                 job.id = res.Id;
-                                var REMOVE_ME = runnerConfig.name == "c9" ? {
-                                    Binds: ["/workspace:/workspace"],
-                                    PortBindings: { "3131/tcp": [{ HostPort: "3131", HostIp: "0.0.0.0" }] }
-                                } : {};
-                                thisRunner.docker.containers.start(job.id, REMOVE_ME, function(err, result) {
-                                   if(err) throw err;
-                                   attachStdListener(job);
-                                   callback(job);
-                                });
+                                if(!!job.hook.create) {
+                                    job.hook.create.call(job, function(cErr, startOpts) {
+                                        if(cErr) console.log('Fatal error from create hook: '+cErr);
+                                        else {
+                                            thisRunner.docker.containers.start(job.id, startOpts, function(err, result) {
+                                               if(err) throw err;
+                                               // attachStdListener(job); NO thank you.  move that into CodeRunner
+                                               if(!!job.hook.started) {
+                                                   getInspectDetails(job, job.hook.started, callback);
+                                               } else callback(job);
+                                            });
+                                        }
+                                    });
+                                }
                             } else callback(new Error('No ID returned from docker create'), null);
                         } else callback(err, null);
                     });
@@ -304,6 +311,15 @@ var ConfigureDocker = function(config) {
                 .on('SIGTERM', gracefulExit);
         }
         return thisRunner;
+    }
+
+    function getInspectDetails(job, receiver, cb) {
+        job.docker.containers.inspect(job.id, function(err, details) {
+            if(err) {
+                job.report('Inspect failed: '+err);
+                cb(err);
+            } else receiver.call(job, details, cb);
+        });
     }
 
     // perform health check after timeout

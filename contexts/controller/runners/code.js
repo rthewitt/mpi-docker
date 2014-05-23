@@ -71,6 +71,7 @@ module.exports = {
             else cb(job);
         },
         run: function(codeStream) {
+            // THIS IS NOT CORRECT, HOOK SHOULD NOT CALL FINALCB
             _injectCodeOrMonitor.call(this, codeStream);
         },
         clean: function(cb) { cb(); }

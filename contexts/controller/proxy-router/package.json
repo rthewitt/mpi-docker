@@ -1,0 +1,19 @@
+{
+  "name": "proxy-router",
+  "version": "0.0.2",
+  "description": "Cached proxy for student information and routes",
+  "main": "ProxyRouter.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "credit Dan Sosedoff"
+  },
+  "license": "BSD-2-Clause",
+  "readme": "ERROR: No README data found!",
+  "_id": "proxy-router@0.0.2",
+  "dist": {
+    "shasum": "a6ae5887c5ca4468be432da9404cae1c6dced8c5"
+  },
+  "_from": "proxy-router"
+}
