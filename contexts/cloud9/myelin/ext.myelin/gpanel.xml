@@ -1,0 +1,65 @@
+<a:application xmlns:a="http://ajax.org/2005/aml">
+    <a:window
+        id = "gpanelWindow"
+        title = "Project CPanel"
+        center = "true"
+        class = "winGpanel"
+        minheight = "180"
+        minwidth = "570"
+        modal = "false"
+        buttons = "close"
+        kbclose = "true"
+        width = "540"
+        height = "195">
+        <a:divider />
+        <a:hbox padding="10" pack="center" edge="10 10 5 10" align="center">
+            <a:button id="codeTourButtonPlay" 
+              class   = "btn-green tgPlayButton"
+              tooltip = "Play"
+              width   = "40"
+              height  = "25"
+              skin    = "btn-default-css3"
+              onclick = "require('ext/myelin/gpanel').gpanelWindow.close(); require('ext/myelin/codetour').launchGT();" />
+        </a:hbox>
+        <a:divider />
+        <a:hbox pck="start" padding="5" edge="10 10 5 10">
+            <a:button id="projectInit">Initialize Project</a:button>
+            <a:button id="projectNext">Submit Work</a:button>
+            <a:button id="projectCompile">Compile</a:button>
+            <a:button id="lessonInstructions">Instructions</a:button>
+            <a:button id="gpanelClose">Close</a:button>
+        </a:hbox> 
+        <a:divider />
+        <a:hbox pck="center" padding="5" edge="10 10 5 10">
+            <a:button id="addCodeStep">Add Step</a:button>
+            <a:button id="addMarkup">Attach Media</a:button>
+            <a:button id="addMarkupGrp">Group Tokens</a:button>
+            <a:button id="launchVideo">Test Video</a:button>
+        </a:hbox> 
+    </a:window>
+    <a:window
+        id = "instructionWindow"
+        title = "Current Instructions"
+        center = "true"
+        modal = "true"
+        buttons = "close"
+        kbclose = "true"
+        width = "800"
+        height = "600">
+        <iframe id="instructionFrame" style="height:100%;width:100%;" src="http://astrocyte:8080/blog"></iframe>
+    </a:window>
+    <a:window
+        id = "mpiMediaWindow"
+        title = "Step Media"
+        center = "true"
+        modal = "false"
+        buttons = "close"
+        kbclose = "true"
+        width = "800"
+        height = "600">
+    </a:window>
+
+    <iframe id="mpiMediaFrame" style="height:100%;width:100%;"></iframe>
+    <iframe id="secondaryFrame" style="height:100%;width:100%;"></iframe>
+
+</a:application>

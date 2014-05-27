@@ -1,0 +1,14 @@
+{
+    "name": "ext.myelin",
+    "version": "0.0.1",
+    "main": "gpanel.js",
+    "private": true,
+    "plugin": {
+        "provides": [
+            "ext.myelin"
+        ],
+        "consumes": [
+            "client-plugins"
+        ]
+    }
+}

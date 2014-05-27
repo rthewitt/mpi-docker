@@ -38,7 +38,7 @@ var express = require('express'),
           cache_ttl: 5
        });
 
-    var proxy = httpProxy.createProxyServer({target: 'http://172.17.0.5:80'});
+    var proxy = httpProxy.createProxyServer({target: { port: 80 }});
 
     /*
      if container is used, no good, error
@@ -106,10 +106,9 @@ var express = require('express'),
        } else { // 3. Container in URL
            proxyRouter.lookupRouteForContainer(locAction, function(route) {
                if(route) { // redirect to container
-                   proxy.web(req, res); 
-                     // ,{
-                       //target: ('http://'+route.host+':'+route.port)
-                  // }); 
+                   proxy.web(req, res ,{
+                       target: ('http://'+route.host+':'+route.port)
+                   }); 
                } else throw new Error('404 Workspace Not Found');
              //     res.writeHead(404);
              //     res.end();
@@ -119,7 +118,12 @@ var express = require('express'),
 
     proxyServer.on('upgrade', function(req, socket, head) {
         console.log('upgrade received');
-        proxy.ws(req, socket, head, { target: 'http://172.17.0.5:80'});
+        var workspace = req.headers.host.split('.')[0];
+        proxyRouter.lookupRouteForContainer(workspace, function(route) {
+            proxy.ws(req, socket, head, { 
+                target: ('http://'+route.host+':'+route.port)
+            });
+        });
     });
 
     proxyServer.on('error', function(err) {

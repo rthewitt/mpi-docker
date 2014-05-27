@@ -18,7 +18,7 @@ config.runners = [
     {
         name: 'c9',
         image: 'cloud9',
-        cmd: ["/cloud9/bin/cloud9.sh", "-l", "0.0.0.0", "-w", "/workspace"],
+        cmd: ["/cloud9/bin/cloud9.sh", "student", "-l", "0.0.0.0", "-w", "/workspace"],
         memory: MEM_BASE,
         volumes: { "/workspace": {} },
         exposed: { "80/tcp": {} },
