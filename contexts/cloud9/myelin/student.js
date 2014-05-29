@@ -115,8 +115,6 @@ var config = [
             "ext/dbg-node/dbg-node",
             "ext/noderunner/noderunner", //Add location rule
             "ext/console/console",
-            // MPI:
-            "ext/myelin/gpanel",
             "ext/consolehints/consolehints",
             "ext/tabbehaviors/tabbehaviors",
             "ext/tabsessions/tabsessions",
@@ -137,7 +135,6 @@ var config = [
             "ext/codecomplete/codecomplete",
             "ext/vim/vim",
             "ext/anims/anims",
-            "ext/guidedtour/guidedtour",
             "ext/quickstart/quickstart",
             "ext/jslanguage/jslanguage",
             "ext/csslanguage/csslanguage",
@@ -151,7 +148,12 @@ var config = [
             "ext/autosave/autosave",
             "ext/revisions/revisions",
             "ext/language/liveinspect",
-            "ext/splitview/splitview"
+            "ext/splitview/splitview",
+            // MPI:
+            "ext/myelin/gpanel",
+            "ext/myelin/codetour",
+            //"ext/guidedtour/guidedtour",
+            // END MPI:
         ]
     }, {
         packagePath: "vfs-architect/local",

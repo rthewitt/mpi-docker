@@ -1,4 +1,4 @@
-FROM codewars:nvmnode
+FROM mpi:nvmnode
 MAINTAINER Ryan Hewitt "rthewitt.devel@gmail.com"
 
 # Is this more or less secure?

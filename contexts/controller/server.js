@@ -22,6 +22,9 @@ var express = require('express'),
     var redisPort = process.env.DB_PORT_6379_TCP_PORT,
         redisHost = process.env.DB_PORT_6379_TCP_ADDR;
 
+    var myelinPort = process.env.MYELIN_PORT_7777_TCP_PORT,
+        myelinHost = process.env.MYELIN_PORT_7777_TCP_ADDR;
+
     if(!port) {
         port = process.env.CODE_RUNNER_PORT || process.argv.indexOf('-p') > 0 ? 
             process.argv[process.argv.indexOf('-p')+1] : null; 
@@ -49,7 +52,7 @@ var express = require('express'),
         var resJSON = '';
         var params = '';
         if(userId || !!refId) {
-            params += '?';
+            params += '?'
             params += userId ? 'userId='+userId : ''; 
             params += !!refId ? 'refId='+refId : ''; 
         }
@@ -104,15 +107,32 @@ var express = require('express'),
        } else if(locAction === 'test') {
            proxy.web(req, res, { target: ('http://localhost:8888') });
        } else { // 3. Container in URL
-           proxyRouter.lookupRouteForContainer(locAction, function(route) {
-               if(route) { // redirect to container
-                   proxy.web(req, res ,{
-                       target: ('http://'+route.host+':'+route.port)
-                   }); 
-               } else throw new Error('404 Workspace Not Found');
-             //     res.writeHead(404);
-             //     res.end();
-           });
+           var workspaceId = locAction;
+
+           if(!!urlParts.query.action) {
+               console.log('received action: '+util.inspect(urlParts.query));
+               var path = util.format('/%s?workspaceId=%s&userId=%s&refId=%s', urlParts.query.action, workspaceId, userId, kataId);
+               // TODO change this to dynamic based on location
+               path += '&url='+encodeURIComponent('git://github.com/creationix/conquest.git');
+               var myReq = http.request({ host: myelinHost, path: path, port: myelinPort}, function(myRes) {
+                   console.log('STATUS: ' + myRes.statusCode);
+                   console.log('HEADERS: ' + JSON.stringify(myRes.headers));
+               });
+               myReq.on('error', function(e) {
+                   console.log('error contacting myelin via subthalamus: '+e.message)
+               });
+               myReq.end();
+           } else {
+               proxyRouter.lookupRouteForContainer(workspaceId, function(route) {
+                   if(route) { // redirect to container
+                       proxy.web(req, res ,{
+                           target: ('http://'+route.host+':'+route.port)
+                       }); 
+                   } else throw new Error('404 Workspace Not Found');
+                 //     res.writeHead(404);
+                 //     res.end();
+               });
+           }
        }
     });
 

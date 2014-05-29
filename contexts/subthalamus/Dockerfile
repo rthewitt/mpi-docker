@@ -1,13 +1,16 @@
 # We only want the service to run
-FROM ubuntu:13.04
+FROM mpi:node
 
 RUN apt-get update
 RUN apt-get install -y git-core curl python
 
-ADD ./bin/ /opt/subthalamus
+ADD . /opt/subthalamus
 
-VOLUME ["/home/myelin/professor-bot"]
-VOLUME ["/home/myelin/internal-myelin"]
-VOLUME ["/home/myelin/git-directories"]
+VOLUME ["/myelin/professor-bot"]
+VOLUME ["/myelin/internal-myelin"]
+VOLUME ["/myelin/user_data"]
 
-CMD ["/bin/bash"]
+EXPOSE 7777
+
+CMD ["/opt/subthalamus/server.js"]
+ENTRYPOINT ["node"]

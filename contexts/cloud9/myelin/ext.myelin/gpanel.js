@@ -249,9 +249,11 @@
         if(ajax.isPOST) xmlHttp.send(ajax.params);
         else xmlHttp.send(); // may be redundant
        },
+      // No more port change for router, so we can probably just reference slash
       ajaxActionHandler: function intermediaryAjaxHandler(params, message) {
-        var port = '8080'
-        var url = 'http://'+window.location.hostname+':'+port+'/glial/jgit'
+        //var port = '8080'
+        //var url = 'http://'+window.location.hostname+':'+port+'/glial/jgit'
+        var url = '/myelin'
         var _self = this;
         this.sendAjaxRequest({
             method: 'GET',
