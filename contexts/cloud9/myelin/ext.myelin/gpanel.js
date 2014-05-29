@@ -108,7 +108,7 @@
           return this.ajaxActionHandler('action=init', 'Project Initialized');
         }, this));
         this.projectNext.addEventListener('click', __bind(function() {
-          return this.ajaxActionHandler('action=next-step', 'Work Submitted, please wait for available lesson.');
+          return this.ajaxActionHandler('action=submit', 'Work Submitted, please wait for available lesson.');
         }, this));
 
         // will need to add arguments, etc
@@ -251,8 +251,6 @@
        },
       // No more port change for router, so we can probably just reference slash
       ajaxActionHandler: function intermediaryAjaxHandler(params, message) {
-        //var port = '8080'
-        //var url = 'http://'+window.location.hostname+':'+port+'/glial/jgit'
         var url = '/myelin'
         var _self = this;
         this.sendAjaxRequest({

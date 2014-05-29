@@ -4,7 +4,7 @@ var DockerIO = require('docker.io'),
     moment = require('moment'),
     fs = require('fs'),
     net = require('net');
-    runnerUtil = require('mpi-util');
+    runnerUtil = require('./mpi-util');
 
 var logDateFormat = 'YYYY-MM-DD HH:mm Z';
 var MAX_USE = 1000;
@@ -60,7 +60,7 @@ var ConfigureDocker = function(config) {
             this.docker = docker;
         }
 
-        dr.prototype = require('runners/'+runnerConfig.name+'.js');
+        dr.prototype = require('./runners/'+runnerConfig.name+'.js');
         dr.prototype.runOpts = options;
 
         for(var fun in 'hook', 'test') {

@@ -1,7 +1,7 @@
 /*
     This server will contain the actual js-git handlers
 */
-var Myelin = require('./myelin'),
+var Myelin = require('./lib/myelin'),
     express = require('express'),
     bodyParser = require('body-parser');
 var myelin = new Myelin();

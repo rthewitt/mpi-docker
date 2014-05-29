@@ -1,4 +1,4 @@
-FROM mpi:nvmnode
+FROM mpi:node
 MAINTAINER Ryan Hewitt "rthewitt.devel@gmail.com"
 
 # Is this more or less secure?
@@ -7,7 +7,6 @@ USER root
 VOLUME ["/user_data"]
 
 ADD . /opt/docker-runner
-ADD env.sh /usr/local/bin/run
 
 ENV RUNNER runner
 
@@ -16,5 +15,4 @@ ENV RUNNER runner
 
 # Runs in current shell context
 WORKDIR /opt/docker-runner
-CMD ["/usr/local/bin/run"]
-ENTRYPOINT ["/bin/bash"]
+CMD ["node", "/opt/docker-runner/server.js"]

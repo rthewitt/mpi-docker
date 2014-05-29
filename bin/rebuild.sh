@@ -60,7 +60,7 @@ cp -r * "$BUILD_DIR"
 cp ../common/* "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-docker build -t "$IMAGE_NAME" -rm . ; SUCCESS=$?
+docker build -t "$IMAGE_NAME" --rm . ; SUCCESS=$?
 
 if [ "$SUCCESS" -eq 0 ] && [ "$IMAGE" != "" ]; then
     docker rmi "$IMAGE"

@@ -1,5 +1,5 @@
 var fs = require('fs'),
-    config = require('../config'),
+    config = require('../../config'),
     runnerUtil = require('../mpi-util');
 
 var STDOUT=1, STDERR=2;

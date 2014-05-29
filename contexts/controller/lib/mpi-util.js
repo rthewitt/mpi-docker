@@ -1,6 +1,6 @@
 var net = require('net');
     util = require('util'),
-    config = require('./config')
+    config = require('../config')
 
 module.exports = {
 

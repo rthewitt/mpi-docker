@@ -7,7 +7,7 @@ var express = require('express'),
     streamBuffers = require('stream-buffers'),
     fs = require('fs'),
     redis = require('redis'),
-    ProxyRouter = require('./proxy-router'),
+    ProxyRouter = require('./lib/proxy-router'),
     config = require('./config');
 
 //var agent = require('webkit-devtools-agent');
@@ -160,7 +160,7 @@ var express = require('express'),
     var runners = {};
     var arrayOfRunners = [];
 
-    var CodeRunner = require('./controller')(options);
+    var CodeRunner = require('./lib/controller')(options);
 
     for(var rc in options.runners) {
         var runConfig = options.runners[rc];
