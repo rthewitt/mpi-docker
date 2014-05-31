@@ -34,17 +34,17 @@ config.runners = [
     {
         name: 'javascript',
         image: 'coderunner',
-        cmd: ['/usr/local/bin/run'],
+        cmd: ['/usr/bin/python', '/usr/local/bin/run'],
         memory: MEM_BASE,
         pool: {
             refreshIdle: false,
-            max: 2,
-            min: 1, 
+            max: 5,
+            min: 2, 
             log: false
         },
         volumes: { }, // TODO MOVE THESE
         exposed: { },
-        active: false
+        active: true
     }];
 
 module.exports = config;

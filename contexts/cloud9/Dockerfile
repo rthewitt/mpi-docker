@@ -6,6 +6,7 @@ VOLUME ["/workspace"]
 
 #ADD setup.sh /usr/local/bin/setup-cloud9
 RUN npm install -g sm
+RUN npm install -g mocha
 RUN /usr/local/lib/node_modules/sm/bin/sm install-command
  
 # version 0.7
