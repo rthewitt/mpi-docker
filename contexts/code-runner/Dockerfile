@@ -11,5 +11,5 @@ EXPOSE 8888
 
 USER nobody
 
-CMD ["-c", "/usr/bin/python3 usr/local/bin/run"]
+CMD ["-c", "/usr/bin/python3 /usr/local/bin/run"]
 ENTRYPOINT ["/bin/bash"]

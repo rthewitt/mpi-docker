@@ -27,7 +27,7 @@ Myelin.prototype.cloneFromUrl = function(url, workspaceId) {
 };
 
 Myelin.prototype.testUserSubmition = function() {
-});
+};
 
 module.exports = Myelin;
 

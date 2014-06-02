@@ -4,7 +4,7 @@ var DockerIO = require('docker.io'),
     moment = require('moment'),
     fs = require('fs'),
     net = require('net');
-    runnerUtil = require('./mpi-util');
+    runnerUtil = require('./runner-util');
 
 var logDateFormat = 'YYYY-MM-DD HH:mm Z';
 var MAX_USE = 1000;
@@ -20,7 +20,7 @@ var NEW = 0,
     FAIL = 6;
 var stateNames = ['NEW', 'RETRY', 'WAITING', 'ACCUMULATE', 'FINISHED', 'RECOVERY', 'FAIL'];
 
-var ConfigureDocker = function(config) {
+module.exports = function(config) {
 
     var docker = DockerIO(config.dockerOpts);
 
@@ -71,6 +71,7 @@ var ConfigureDocker = function(config) {
         }
 
         dr.prototype.run = function(jobArgs, clientToken, finalCB) {
+            console.log('dr run function');
             this.pool.acquire(function(err, job){
                 if(err) throw err; 
                 job.initialTime = Date.now();
@@ -298,7 +299,18 @@ var ConfigureDocker = function(config) {
         else extractPayload(job, data.slice(job.logBytes));
     }
 
-    return { createRunner: _makeRunner }
-};
+    return { 
 
-module.exports = ConfigureDocker;
+        createRunner: _makeRunner,
+
+        init: function(runnerConfigs) {
+            var runners = {};
+            for(var rc in runnerConfigs) {
+                var runConfig = runnerConfigs[rc];
+                var aRunner = _makeRunner(runConfig);
+                runners[runConfig.name] = aRunner;
+            }
+            return runners;
+        }
+    }
+};

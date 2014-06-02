@@ -11,9 +11,9 @@
     "express": "3.x",
     "http-proxy": "~1.1.4",
     "redis": "~0.9.1",
-    "docker.io": "0.9.8",
-    "generic-pool": "2.0.4",
+    "git-node": "0.1.1",
     "stream-buffers": "0.2.5",
+    "ejs": "1.0.0",
     "moment": "~2.5.1"
   },
   "scripts": {

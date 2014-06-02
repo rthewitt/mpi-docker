@@ -1,6 +1,5 @@
 var fs = require('fs'),
-    config = require('../../config'),
-    runnerUtil = require('../mpi-util');
+    runnerUtil = require('../runner-util');
 
 var STDOUT=1, STDERR=2;
 var states = [];

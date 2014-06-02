@@ -1,0 +1,22 @@
+{
+  "name": "basilisk",
+  "version": "0.0.9",
+  "private": true,
+  "description": "Docker pooled runner",
+  "main": "main.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "docker.io": "0.9.8",
+    "generic-pool": "2.0.4"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "docker"
+  ],
+  "author": "Ryan Hewitt",
+  "license": "BSD-2-Clause"
+}

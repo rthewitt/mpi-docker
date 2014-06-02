@@ -1,6 +1,7 @@
-var net = require('net');
-    util = require('util'),
-    config = require('../config')
+var net = require('net'),
+    util = require('util');
+
+    var config = {}; // THIS IS NOT LEGIT
 
 module.exports = {
 
@@ -47,11 +48,11 @@ module.exports = {
         });
 
         return newClient;
-    }
+    },
 
     getSocketGeneric: function (job, opts, handlers) {
 
-        var name = isOutput ? util.format('generic-socket:%s:-%s', opts.port, job.id)
+        var name = util.format('generic-socket:%s:-%s', opts.port, job.id);
 
         if(!handlers['data']) throw new Error('data handler not provided');
 
@@ -70,6 +71,7 @@ module.exports = {
         };
 
         var newClient = net.connect(opts.port, opts.ip, function() {
+            console.log('should have connected to '+opts.ip+':'+opts.port);
 
             newClient.name = name;
 

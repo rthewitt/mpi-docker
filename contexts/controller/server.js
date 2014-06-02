@@ -8,16 +8,15 @@ var express = require('express'),
     fs = require('fs'),
     redis = require('redis'),
     ProxyRouter = require('./lib/proxy-router'),
-    config = require('./config');
+    env = process.env.NODE_ENV || 'development',
+    config = require('./config/config')[env];
 
 //var agent = require('webkit-devtools-agent');
 
-(function(options) {
-
-    var host = options.dockerOpts.host || 'localhost';
-    var hostname = options.dockerOpts.hostname;
-    var port = options.port;
-        internalPort = options.internalPort || 8888;
+    var host = config.dockerOpts.host || 'localhost';
+    var hostname = config.dockerOpts.hostname;
+    var port = config.port;
+        internalPort = config.internalPort || 8887;
         
     var redisPort = process.env.DB_PORT_6379_TCP_PORT,
         redisHost = process.env.DB_PORT_6379_TCP_ADDR;
@@ -25,17 +24,14 @@ var express = require('express'),
     var myelinPort = process.env.MYELIN_PORT_7777_TCP_PORT,
         myelinHost = process.env.MYELIN_PORT_7777_TCP_ADDR;
 
+/*
     if(!port) {
         port = process.env.CODE_RUNNER_PORT || process.argv.indexOf('-p') > 0 ? 
             process.argv[process.argv.indexOf('-p')+1] : null; 
     }
+    */
     if(!redisPort || !redisHost) console.log('FATAL: Redis bridge not found!');
 
-    var baseDir = options.baseDir || '';
-
-
-
-    //var client = redis.createClient(redisPort, redisHost);
     var proxyRouter = new ProxyRouter({
           backend: redis.createClient(redisPort, redisHost),
           cache_ttl: 5
@@ -105,7 +101,7 @@ var express = require('express'),
              //     res.writeHead(500);
              //     res.end();
        } else if(locAction === 'test') {
-           proxy.web(req, res, { target: ('http://localhost:8888') });
+           proxy.web(req, res, { target: ('http://localhost:8887') });
        } else { // 3. Container in URL
            var workspaceId = locAction;
 
@@ -157,17 +153,6 @@ var express = require('express'),
     This is a test UI for code submission, and for direct container interaction
 ----------------------------------------------------------------------------------*/
 
-    var runners = {};
-    var arrayOfRunners = [];
-
-    var CodeRunner = require('./lib/controller')(options);
-
-    for(var rc in options.runners) {
-        var runConfig = options.runners[rc];
-        var aRunner = CodeRunner.createRunner(runConfig);
-        runners[runConfig.name] = aRunner;
-        arrayOfRunners.push(aRunner);
-    }
 
 
     function errResponse(error) {
@@ -212,88 +197,16 @@ var express = require('express'),
 
 
     var app = express();
-    app.use(express.static(__dirname + '/public'))
-        .use(express.favicon());
 
-    // TODO separate routes into specific runners, or allow extensions
-    app.get('/assign', function(req, res) {
-        var userId = req.query.userId;
-        var kataId = req.query.refId;
-        try {
-            runners['c9'].run([userId, kataId], kataId, function(err, job) {
-                job.instrument(util
-                    .format('received cloud9 workspace for user %s,  challenge %s', userId, kataId));
-                res.send({ workspace: job.workspace, ip: job.ipAddr, port: job.commPort });
-            });
-        } catch(err) {
-            if(err) console.log('ERR: '+err);
-            console.log(util.format('Unable to get container for user %s, challenge %s', userId, kataId));
-            res.writeHead(500);
-            res.end();
-        }
-    });
 
-    // TODO separate routes into specific runners, or allow extensions
-    app.post('/code/eval', function(req, res) {
+    // setup runners
+    var runners = {};
+    var Basilisk = require('./lib/basilisk')(config);
+    var runners = Basilisk.init(config.runners)
 
-        var buf = new Buffer(body.toString('binary'), 'binary');
-
-        var startTime = Date.now();
-        var cStream = createStreamForScript(req.body.code);
-        var kataId = req.query.refId;
-
-        if(!cStream) {
-            res.send(getError('Problem streaming from POST')); 
-            return;
-        }
-
-        // passing in request to pipe directly
-        runners['code'].run([req, kataId, startTime], kataId, function(err, job, results) {
-            if(!!err) res.send(errResponse(err));
-            // modify instrument to take an initial time
-            job.instrument('sending test results.');
-            res.send({results: results});
-        });
-    });
-
-    app.get('/shutdown', function(req, res) {
-
-        var waitId;
-        var shuttingDown = function() {
-            var fin = arrayOfRunners.some(function(runner){ 
-                return !runner.pool;
-            });
-            if(fin) {
-                clearInterval(waitId);
-                process.exit();
-            } 
-        };
-        waitId = setInterval(shuttingDown, 400);
-
-        arrayOfRunners.forEach(function(runner) {
-            if(!runner.pool) return;
-            runner.pool.drain(function() {
-                console.log('Shutting down pool: '+runner.name);
-                runner.pool.destroyAllNow();
-                runner.pool = false;
-            });
-        });
-    });
-
-    // FIXME
-    app.get('/:runner/shutdown', function(req, res) {
-        var name = req.params.runner;
-        if(!!runners[name].pool) {
-            runners[name].pool.drain(function() {
-                console.log('Shutting down pool: '+name);
-                runners[name].pool.destroyAllNow();
-            });
-        }
-    });
-
-    // TODO
-    app.get('/:runner/test', function(req, res) {
-    });
+    require('./config/express')(app, config);
+    require('./config/routes')(app, runners);
 
     app.listen(internalPort);
-})(config);
+
+    exports = module.exports = app;

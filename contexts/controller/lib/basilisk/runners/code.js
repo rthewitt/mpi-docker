@@ -1,6 +1,5 @@
 var fs = require('fs'),
-    config = require('../../config'),
-    runnerUtil = require('../mpi-util');
+    runnerUtil = require('../runner-util');
 
 var STDOUT=1, STDERR=2;
 var states = [];
@@ -87,11 +86,13 @@ module.exports = {
     },
     hook: {
         create: function(cb) {
+            console.log('inside create hook for code');
             this.handleTestResults = defaultResultHandler;
             this.virgin = true;
             cb(null, {});
         },
         run: function(req, kataId, injectTime, cb) {
+            console.log('code run hook');
             if(!this.virgin) this.virgin = false;
             // send data, receive results, send results
             delete this.handleTestResults;
@@ -109,6 +110,7 @@ module.exports = {
             });
         },
         started: function(details, poolCB) {
+            console.log('code start hook');
             this.commPort = '8888';
             this.ipAddr = null;
             try {
@@ -118,7 +120,9 @@ module.exports = {
                 console.log('Error: '+cex);
             }
 
-            var codeSocket = runnerUtil.getSocketGeneric(this, {ip: this.ipAddr, port: this.commPort}, getSocketHandlers(job));
+            console.log(this.ipAddr+':'+this.commPort);
+
+            var codeSocket = runnerUtil.getSocketGeneric(this, {ip: this.ipAddr, port: this.commPort}, getSocketHandlers(this));
 
             var self = this;
             codeSocket.setTimeout(IDLE_TIMEOUT_MS, function() {

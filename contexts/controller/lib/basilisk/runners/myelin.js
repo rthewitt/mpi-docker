@@ -1,6 +1,5 @@
 var fs = require('fs'),
-    config = require('../../config'),
-    runnerUtil = require('../mpi-util');
+    runnerUtil = require('../runner-util');
 
 var STDOUT=1, STDERR=2;
 var states = [];
@@ -18,25 +17,11 @@ module.exports = {
         // TODO
     },
     hook: {
-        create: function(cb) {
-            console.log('Inside c9 create hook');
-            var workspace = this.id.substr(0, 13);
-            try {
-                fs.mkdirSync('/user_data/workspaces/'+workspace); 
-                this.workspace = workspace;
-            } catch(ex) {
-                this.report('Error creating workspace: '+ex);
-                cb(ex, null);
-                return;
-            }
-            var startOpts = {
-                Binds: ["/user_data/workspaces/"+workspace+":/workspace"]
-                //PortBindings: { "3131/tcp": [{ HostPort: "3131", HostIp: "0.0.0.0" }] }
-            }
-            cb(null, startOpts);
+        create: function(cb) { // TODO allow null, resorts to config!!!
+            cb(null, { Binds: ["/user_data/:/user_data"] });
         },
         started: function(details, poolCB) {
-            this.commPort = '80'; // This is in config anyway now, and we can stop publishing to host
+            this.commPort = '80';
             this.ipAddr = null;
             try {
                 // this.commPort = details.NetworkSettings.Ports['3131/tcp'][0].HostPort;
