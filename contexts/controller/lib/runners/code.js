@@ -13,67 +13,127 @@ var NEW = 0,
     FAIL = 6;
 var stateNames = ['NEW', 'RETRY', 'WAITING', 'ACCUMULATE', 'FINISHED', 'RECOVERY', 'FAIL'];
 
-function _injectCodeOrMonitor(codeStream) {
-    var self = this;
+var IDLE_MINS = 5;
+var IDLE_TIMEOUT_MS = IDLE_MINS * 60 * 1000;
+
+/*
+ * Too tired to think.
+ * This code is all mixed, incomplete pastes
+ * On hook:start, we need to set up the initial socket
+ * This requires handlers that we won't yet have
+ * Since those handlers must alert request
+ *
+ * Proposed Solution:
+ *
+ * Use [mostly] default handlers for logging
+ * On run, we unsubscribe from existing
+ * data/error handlers
+ * Then we call wrapHandlers...(cb)
+ * Hook up the new handlers
+ * pipe in the request stream
+ * (The request stream using "restify" should
+ * implement stream, will not use multipart)
+ */
+function getSocketHandlers(job) {
 
     var onError = function(err) {
-        self.finalCB(err, self);
+        job.handleTestResults(err, job, null);
     };
 
-    var onData = function(data) {
-            self.report('data received ' + data);
-            switch(self.state) {
-                case NEW: 
-                    self.instrument('injecting code');
-                    self.injectTime = Date.now();
-                    codeStream.pipe(self.client);
-                    break;
-                default:
-                    console.log('DELETE ME STATE MACHINE');
-                    break;
-            }
+    // verify flush on python write from shim
+    var onData = function (data) {
+
+        job.report(util.format('%s data received - length: %d', 
+                this.name, data.length));
+
+        if(job.state === NEW) {
+            job.report('ignoring data because we are NEW - VERIFY');
+            return;
+        }
+
+        job.state = ACCUMULATE;
+
+        var part = data.toString('utf8');
+        job.partialResponse = !job.partialResponse ?  part :
+            job.partialResponse += part;
+        
+        var goodJSON = false;
+        console.log('VERIFY SOCKET: '+this.name+ + typeof this);
+        try { 
+            goodJSON = parseJSON(job, job.partialResponse);
+        } 
+        catch(ex) { job.report('parse failed: '+ex); }
+
+        if(goodJSON) {
+            job.state = FINISHED;
+            job.handleTestResults(null, job, goodJSON);
+            delete job.handleTestResults;
+            job.handleTestResults = defaultResultHandler;
+        }
+
     };
 
-    // code has been injected
-    var onFinish = function() {
-        self.instrument('client socket finished');
-        self.state = WAITING;
-        self.client.destroy();
-        delete self.client;
-        delete client;
-    };
-
-    var injectHandlers = {
-        error: onError,
-        data: onData,
-        finish: onFinish
-    };
-
-    var injectClient = runnerUtil.getClientForContainer(self, false, injectHandlers);
+    return { data: onData, error: onError };
 }
 
+function defaultResultHandler(err, job, results) {
+    if(err) job.report('Result error received without destination\n'+results);
+    job.instrument('Received test results without destination:\n'+results);
+}
 
 module.exports = {
     test: function(finalCB) {
-        var runnerThis = this;
-        var testFilePath = 'test/'+this.language+'/test.'+this.extension;
-        var codeStream = fs.createReadStream(testFilePath);
-        fs.stat(testFilePath, function(err, stat) {
-            if(err) throw err;
-            codeStream.inputSize = stat.size; 
-            runnerThis.run(codeStream, finalCB);
-        });
+        // TODO
     },
     hook: {
-        create: function(job, cb) {
-            if(!job) 
-                cb(null, new Error("hook create: job missiong"));
-            else cb(job);
+        create: function(cb) {
+            this.handleTestResults = defaultResultHandler;
+            this.virgin = true;
+            cb(null, {});
         },
-        run: function(codeStream) {
-            // THIS IS NOT CORRECT, HOOK SHOULD NOT CALL FINALCB
-            _injectCodeOrMonitor.call(this, codeStream);
+        run: function(req, kataId, injectTime, cb) {
+            if(!this.virgin) this.virgin = false;
+            // send data, receive results, send results
+            delete this.handleTestResults;
+            this.handleTestResults = cb;
+            // We do not want to end the remote socket via pipe
+            //req.pipe(this.codeSocket);
+            var self = this;
+            req.on('data', function(chunk) {
+                self.report('type of chunk: '+ typeof chunk);
+                // ensure this is binary data
+                self.codeSocket.write(chunk);
+            });
+            req.on('end', function() {
+                self.report('finished sending data to container');
+            });
         },
-        clean: function(cb) { cb(); }
+        started: function(details, poolCB) {
+            this.commPort = '8888';
+            this.ipAddr = null;
+            try {
+                // this.commPort = details.NetworkSettings.Ports['3131/tcp'][0].HostPort;
+                this.ipAddr = details.NetworkSettings.IPAddress;
+            } catch(cex) {
+                console.log('Error: '+cex);
+            }
+
+            var codeSocket = runnerUtil.getSocketGeneric(this, {ip: this.ipAddr, port: this.commPort}, getSocketHandlers(job));
+
+            var self = this;
+            codeSocket.setTimeout(IDLE_TIMEOUT_MS, function() {
+
+                var ofType = (self.handleTestResults === defaultResultHandler) ? 
+                    (self.virgin ? 'virgin' : 'unused') : 'used' ;
+
+                var possess = !!self.partialResponse ? 
+                ('has a partial result: '+self.partialResponse) : 'has no result data';
+                job.report(util.format('%s job idle for %s minutes, and %s', ofType, IDLE_MINS, possess));
+            });
+            this.codeSocket = codeSocket;
+
+            poolCB(this);
+        },
+        clean: function(cb) { cb(); } 
     }
 }

@@ -48,4 +48,38 @@ module.exports = {
 
         return newClient;
     }
+
+    getSocketGeneric: function (job, opts, handlers) {
+
+        var name = isOutput ? util.format('generic-socket:%s:-%s', opts.port, job.id)
+
+        if(!handlers['data']) throw new Error('data handler not provided');
+
+        var onData = handlers['data'];
+        var onError = handlers['error'] || function(err) {
+            job.report(util.format('%s socket error: %s', name, err));
+        };
+        var onRead = handlers['readable'] || function() { 
+            job.report(util.format('%s socket received readable', name));
+        };
+        var onFinish = handlers['finish'] || function() {
+            job.report(util.format('%s socket finished', name));
+        };
+        var onEnd = handlers['end'] || function() {
+            job.instrument(util.format('%s socket ended', name));
+        };
+
+        var newClient = net.connect(opts.port, opts.ip, function() {
+
+            newClient.name = name;
+
+            newClient.on('error', onError);
+            newClient.on('readable', onRead);
+            newClient.on('data', onData);
+            newClient.on('finish', onFinish);
+            newClient.on('end', onEnd);
+        });
+
+        return newClient;
+    }
 }

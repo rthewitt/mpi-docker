@@ -114,7 +114,7 @@ var express = require('express'),
                var path = util.format('/%s?workspaceId=%s&userId=%s&refId=%s', urlParts.query.action, workspaceId, userId, kataId);
                // TODO change this to dynamic based on location
                path += '&url='+encodeURIComponent('git://github.com/creationix/conquest.git');
-               var myReq = http.request({ host: myelinHost, path: path, port: myelinPort}, function(myRes) {
+               var myReq = http.request({ host: myelinHost, method: req.method, path: path, port: myelinPort}, function(myRes) {
                    console.log('STATUS: ' + myRes.statusCode);
                    console.log('HEADERS: ' + JSON.stringify(myRes.headers));
                });
@@ -197,6 +197,7 @@ var express = require('express'),
         }
     }
 
+    /* For code scripts, also inefficient
     this.createStreamForScript = function(script) {
         var readStrBuffer = new streamBuffers.ReadableStreamBuffer();
         var eof = '0ae290840a';
@@ -207,12 +208,12 @@ var express = require('express'),
         codeStream = new streams.Readable().wrap(readStrBuffer);
         return codeStream;
     }
+    */
 
 
     var app = express();
     app.use(express.static(__dirname + '/public'))
-        .use(express.favicon())
-        .use(express.bodyParser());
+        .use(express.favicon());
 
     // TODO separate routes into specific runners, or allow extensions
     app.get('/assign', function(req, res) {
@@ -230,6 +231,29 @@ var express = require('express'),
             res.writeHead(500);
             res.end();
         }
+    });
+
+    // TODO separate routes into specific runners, or allow extensions
+    app.post('/code/eval', function(req, res) {
+
+        var buf = new Buffer(body.toString('binary'), 'binary');
+
+        var startTime = Date.now();
+        var cStream = createStreamForScript(req.body.code);
+        var kataId = req.query.refId;
+
+        if(!cStream) {
+            res.send(getError('Problem streaming from POST')); 
+            return;
+        }
+
+        // passing in request to pipe directly
+        runners['code'].run([req, kataId, startTime], kataId, function(err, job, results) {
+            if(!!err) res.send(errResponse(err));
+            // modify instrument to take an initial time
+            job.instrument('sending test results.');
+            res.send({results: results});
+        });
     });
 
     app.get('/shutdown', function(req, res) {
@@ -256,6 +280,7 @@ var express = require('express'),
         });
     });
 
+    // FIXME
     app.get('/:runner/shutdown', function(req, res) {
         var name = req.params.runner;
         if(!!runners[name].pool) {
@@ -266,37 +291,9 @@ var express = require('express'),
         }
     });
 
+    // TODO
     app.get('/:runner/test', function(req, res) {
-        var startTime = Date.now();
-        runners[req.params.runner].test(function(err, job) {
-            if(!!err) res.send(errResponse(err));
-            else if(!job) res.send(errResponse());
-            else res.send(result(job, startTime));
-            
-            if(!!job) job.cleanup(!!err);
-        });
     });
 
-    app.post('/:runner/run', function(req, res) {
-        var startTime = Date.now();
-        var cStream = createStreamForScript(req.body.code);
-
-        if(!cStream) {
-            res.send(getError('Problem streaming from POST')); 
-            return;
-        }
-
-        var kataId = req.query.refId;
-
-        var cb = function(err, job) {
-            if(!!err) res.send(errResponse(err));
-            else if(!job) res.send(errResponse());
-            else res.send(result(job, startTime));
-            
-            if(!!job) job.cleanup(!!err);
-        };
-
-        runners[req.params.runner].run([cStream], kataId, cb);
-    });
     app.listen(internalPort);
 })(config);

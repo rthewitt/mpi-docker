@@ -8,8 +8,6 @@ var DockerIO = require('docker.io'),
 
 var logDateFormat = 'YYYY-MM-DD HH:mm Z';
 var MAX_USE = 1000;
-var IDLE_MINS = 15;
-var IDLE_TIMEOUT_MS = IDLE_MINS * 60 * 1000;
 
 var STDOUT=1, STDERR=2;
 var states = [];
@@ -88,45 +86,6 @@ var ConfigureDocker = function(config) {
         // do not call this directly anymore if using pool
         dr.prototype.createJob = function() {
 
-            var _cleanup = function(healthCheck) {
-                var job = this;
-
-                if(!!healthCheck) {
-                    performHealthCheck(job);
-                    return; // we will resume after inspect
-                }
-
-                if(job.useLevel < MAX_USE) {
-                    job.report('releasing container...');
-                    job.stdout = '';
-                    job.stderr = '';
-                    if(!!job.client) {
-                        job.client.destroy();
-                        delete job.client;
-                    }
-
-                    delete job.injectTime;
-                    delete job.solutionTime;
-                    delete job.finalCB;
-                    delete job.duration;
-                    delete job.responseTime;
-                    delete job.exitCode;
-                    delete job.partial;
-
-                    job.statusCode = 200;
-                    job.state = NEW;
-                    job.retryCount = 0;
-                    job.finalCB = job.defaultCB;
-
-                    if(!!job.hook.clean)
-                        job.hook.clean(function(err) {
-                            job.pool.release(job);
-                        });
-                } else {
-                    job.report('removing container at use='+job.useLevel);
-                    job.pool.destroy(this);
-                }
-            };
 
             var _instrument = function(optMessage) {
                 var reportString = optMessage || '';
@@ -172,76 +131,12 @@ var ConfigureDocker = function(config) {
                 this.finalCB = defaultCB;
                 this.instrument = _instrument;
                 this.report = _report;
-                this.cleanup = _cleanup;
             }
             job.prototype = this;
             
             return new job();
         }
 
-        function attachStdListener(job) {
-
-            var onData = function (data) {
-                if(job.state === NEW) return;
-
-                //job.report('oClient data received ' + data);
-                data.toString(); // read from buffer
-                job.report(util.format('%s data received - length: %d', 
-                        this.name, data.length));
-
-                if(!job.partial || !job.partial.cur) {
-                    job.report('checking header');
-                    data = consumeHeader(job, data);
-                } else job.report('ignoring header');
-
-                job.state = ACCUMULATE;
-                try {
-                    var goodJSON = false;
-                    var looksComplete = extractPayload(job, data);
-                    if(looksComplete) {
-                        if(!!job.partial.out) {
-                            try {
-                                goodJSON = parseJSON(job, job.partial.out)
-                            } catch(ex) {
-                                // more data is probably on the wire
-                                job.report('parse failed: '+ex);
-                                delete job.partial.cur;
-                            }
-
-                            if(goodJSON) {
-                                job.duration = (Date.now() - job.injectTime);
-                                job.state = FINISHED;
-                                job.finalCB(null, job);
-                            }
-
-                        } else if(!!job.partial.stderr) {
-                            job.statusCode = 500;
-                            job.exitCode = -1;
-                            job.state = FAIL;
-                            job.stderr = job.partial.stderr;
-                        }
-                    }
-                } catch(extractException){
-                    job.statusCode = 500;
-                    job.exitCode = -1;
-                    job.state = FAIL;
-                    job.report('Sending 500 to client: '+extractException);
-                    job.finalCB(extractException, job);
-                }
-            };
-
-            var oClient = runnerUtil.getClientForContainer(job, true, { data: onData });
-
-            oClient.setTimeout(IDLE_TIMEOUT_MS, function() {
-                job.report('Socket idle for '+IDLE_MINS+' mins, replacing container');
-                try {
-                    job.useLevel = MAX_USE; // ensure this is recycled. (may change once we identify root cause)
-                    job.finalCB(new Error('Idle container '+job.id), job);
-                } catch(ex) {
-                    job.report(util.format('Callback failed for job %s with exception: %s', job.id, ex.message));
-                }
-            });
-        }
 
         // SUCH UGLY, UGLY CALLBACK CODE FIXME
         var thisRunner = new dr();
@@ -260,7 +155,6 @@ var ConfigureDocker = function(config) {
                                         else {
                                             thisRunner.docker.containers.start(job.id, startOpts, function(err, result) {
                                                if(err) throw err;
-                                               // attachStdListener(job); NO thank you.  move that into CodeRunner
                                                if(!!job.hook.started) {
                                                    getInspectDetails(job, job.hook.started, callback);
                                                } else callback(job);
@@ -322,23 +216,6 @@ var ConfigureDocker = function(config) {
         });
     }
 
-    // perform health check after timeout
-    function performHealthCheck(job) {
-        job.instrument('Job failed, inspecting container');
-
-        job.docker.containers.inspect(job.id, function(err, details) {
-
-            if(err) job.report('Health check error', err);
-
-            if(err || !details.State.Running) {
-                errMsg = util.format('Health Check: %s', (err? err.message : 'container is not running/responding'));
-                job.report(errMsg);
-                job.useLevel = MAX_USE;
-            }
-
-            job.cleanup();
-        });
-    }
 
     function parseJSON(job, payload) {
         //job.report('Attempting to parse json:\n'+payload);
@@ -377,6 +254,7 @@ var ConfigureDocker = function(config) {
     }
 
 
+    // This will be reintroduced stdlistener for log/err
     function extractPayload(job, data) {
         var looksComplete = false;
         var cutoff; // multiplex may cutoff inside a TCP chunk

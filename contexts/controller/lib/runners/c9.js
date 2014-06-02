@@ -35,10 +35,6 @@ module.exports = {
             }
             cb(null, startOpts);
         },
-        run: function(userId, kataId, cb) {
-            console.log('THIS IS WHEN WE HANDLE IDLE SETUP');
-            cb(null, this);
-        },
         started: function(details, poolCB) {
             this.commPort = '80'; // This is in config anyway now, and we can stop publishing to host
             this.ipAddr = null;
@@ -49,6 +45,10 @@ module.exports = {
                 console.log('Error: '+cex);
             }
             poolCB(this);
+        },
+        run: function(userId, kataId, cb) {
+            console.log('THIS IS WHEN WE HANDLE IDLE SETUP');
+            cb(null, this);
         },
         clean: function(cb) { cb(); } // TODO delete workspace directory
     }

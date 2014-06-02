@@ -31,6 +31,19 @@ app.get('/:action', function(req, res) {
         throw "unrecognized action";
     }
 });
+
+app.post('/submit', function(req, res){
+/*
+*  1. load config file
+*  2. load template file based on config (stub)
+*  3. use existing sting to merge with template
+*  4. create tree 
+*/
+    // get unmerged challenge (repo) by ID (id) -> (repo)
+    // create solution attempt merge commit (solutionObj, repo) -> (fs-path)
+    // pipe existing folder to response
+});
+
 app.listen(7777);
 
 console.log('app started on 7777');
