@@ -19,7 +19,7 @@ module.exports = function(app, runners) {
     app.post('/code/eval', code.eval);
 
     app.get('/attempt/:refId', c9.assign);
-    app.get('/workspace/:workspace/*', c9.proxy);
+    app.all('/workspace/:workspace/*', c9.proxy);
 
     app.get('/myelin/show', myelin.show);
     //app.get('/:action', myelin.myelinAction); // change

@@ -1,6 +1,7 @@
 var express = require('express'),
     subdomain = require('express-subdomain-handler'),
     redis = require('redis'),
+    util = require('util'),
     httpProxy = require('http-proxy'),
     streamBuffers = require('stream-buffers'),
     ProxyRouter = require('../lib/proxy-router');
@@ -31,6 +32,7 @@ module.exports = function(app, config) {
     var redisPort = process.env.DB_PORT_6379_TCP_PORT,
         redisHost = process.env.DB_PORT_6379_TCP_ADDR;
 
+    // assert
     if(!redisPort || !redisHost) console.log('FATAL: Redis bridge not found!');
 
     app.proxyRouter = proxyRouter = new ProxyRouter({
@@ -50,8 +52,14 @@ module.exports = function(app, config) {
         console.log('Proxy error: '+err);
     });
 
+    /*
+    proxy.on('proxyRes', function (res) {
+      console.log('RAW Response from the target', JSON.stringify(res.headers, true, 2));
+    });
+    */
+
+    // TODO update this
     proxyServer.on('upgrade', function(req, socket, head) {
-        console.log('upgrade received');
         var workspace = req.headers.host.split('.')[0];
         proxyRouter.lookupRouteForContainer(workspace, function(route) {
             proxy.ws(req, socket, head, { 

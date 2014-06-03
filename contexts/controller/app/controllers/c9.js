@@ -4,6 +4,10 @@ module.exports = function(runner, proxy, proxyRouter) {
     var routes = {};
 
     routes.proxy = function(req, res) {
+        var workspace = req.params.workspace;
+        req.workspace = workspace;
+        var undoRegxp = util.format('/workspace/%s', workspace);
+        req.url = req.url.replace(undoRegxp, '');
        proxyRouter.lookupRouteForContainer(req.params.workspace, function(route) {
            if(route) { // redirect to container
                proxy.web(req, res ,{
