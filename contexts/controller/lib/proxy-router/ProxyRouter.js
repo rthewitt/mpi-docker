@@ -1,3 +1,5 @@
+var redis = require('redis');
+
 var ProxyRouter = function(options) {
    if(!options.backend) {
       throw "Backend required for ProxyRouter.  Please provide options.backend!";

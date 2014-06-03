@@ -11,10 +11,14 @@
     "express": "3.x",
     "http-proxy": "~1.1.4",
     "redis": "~0.9.1",
+    "mktemp": "^0.3.4",
+    "tar": "~0.1.19",
+    "fstream-ignore": "~0.0.8",
     "git-node": "0.1.1",
     "stream-buffers": "0.2.5",
     "ejs": "1.0.0",
-    "moment": "~2.5.1"
+    "moment": "~2.5.1",
+    "express-subdomain-handler": "~0.1.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

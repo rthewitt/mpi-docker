@@ -217,7 +217,6 @@ module.exports = function(config) {
         });
     }
 
-
     function parseJSON(job, payload) {
         //job.report('Attempting to parse json:\n'+payload);
         var json = JSON.parse(payload);

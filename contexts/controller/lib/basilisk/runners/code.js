@@ -1,4 +1,5 @@
 var fs = require('fs'),
+    util = require('util'),
     runnerUtil = require('../runner-util');
 
 var STDOUT=1, STDERR=2;
@@ -45,21 +46,18 @@ function getSocketHandlers(job) {
         job.report(util.format('%s data received - length: %d', 
                 this.name, data.length));
 
-        if(job.state === NEW) {
-            job.report('ignoring data because we are NEW - VERIFY');
-            return;
-        }
-
         job.state = ACCUMULATE;
 
         var part = data.toString('utf8');
         job.partialResponse = !job.partialResponse ?  part :
             job.partialResponse += part;
         
+        /*
         var goodJSON = false;
-        console.log('VERIFY SOCKET: '+this.name+ + typeof this);
-        try { 
-            goodJSON = parseJSON(job, job.partialResponse);
+        try {
+            job.report('so far: '+job.partialResponse);
+            console.log("type was: "+(typeof job.partialResponse));
+            goodJSON = JSON.parse(job, part); // TODO changed to check from socket ONLY
         } 
         catch(ex) { job.report('parse failed: '+ex); }
 
@@ -69,7 +67,15 @@ function getSocketHandlers(job) {
             delete job.handleTestResults;
             job.handleTestResults = defaultResultHandler;
         }
+        */
 
+        // The string seems to be implicitly interpreted before the parse.
+        // I do not undertand this at all, typeof === 'string'
+        // hasOwnProperty('tests') === false
+        job.state = FINISHED;
+        job.handleTestResults(null, job, job.partialResponse);
+        delete job.handleTestResults;
+        job.handleTestResults = defaultResultHandler;
     };
 
     return { data: onData, error: onError };
@@ -91,7 +97,7 @@ module.exports = {
             this.virgin = true;
             cb(null, {});
         },
-        run: function(req, kataId, injectTime, cb) {
+        run: function(stream, kataId, injectTime, cb) {
             console.log('code run hook');
             if(!this.virgin) this.virgin = false;
             // send data, receive results, send results
@@ -100,13 +106,15 @@ module.exports = {
             // We do not want to end the remote socket via pipe
             //req.pipe(this.codeSocket);
             var self = this;
-            req.on('data', function(chunk) {
+            stream.on('data', function(chunk) {
                 self.report('type of chunk: '+ typeof chunk);
                 // ensure this is binary data
                 self.codeSocket.write(chunk);
             });
-            req.on('end', function() {
+            stream.on('end', function() {
                 self.report('finished sending data to container');
+                // try, even though I don't want to do this
+                self.codeSocket.end();
             });
         },
         started: function(details, poolCB) {
@@ -132,7 +140,7 @@ module.exports = {
 
                 var possess = !!self.partialResponse ? 
                 ('has a partial result: '+self.partialResponse) : 'has no result data';
-                job.report(util.format('%s job idle for %s minutes, and %s', ofType, IDLE_MINS, possess));
+                self.report(util.format('%s job idle for %s minutes, and %s', ofType, IDLE_MINS, possess));
             });
             this.codeSocket = codeSocket;
 

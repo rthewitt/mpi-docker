@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import os
 import sys
 from subprocess import Popen, PIPE
 import tarfile
@@ -65,12 +66,12 @@ while True:
         print("appending")
         huge += data
 
-    conn.send(b'working...')
     print("held in memory, fix this")
 
     for script in split_by_marker(io.BytesIO(huge)):
         tmp_file = get_temp_file()
         tmp_dir = get_temp_file(True)
+
 
         with open(tmp_file, 'wb+') as tgz:
             tgz.write(bytearray(script))
@@ -79,11 +80,28 @@ while True:
 
         tar = tarfile.open(tmp_file, 'r:*')
 
+
+        root_path = os.path.commonprefix(tar.getnames())
+
+        tmp_path = os.path.join(tmp_dir, root_path)
+        git_dir = os.path.join(tmp_dir, '.git')
+
+        print('root: '+root_path)
+        print('full: '+tmp_path)
         tar.extractall(tmp_dir)
         tar.close()
+        os.rename(tmp_path, git_dir)
 
-        test_p = Popen(['mocha', '-R', 'json-cov'], cwd=(tmp_dir+'/merged'), stdout=PIPE)
+        checkout = Popen(['git', 'checkout', 'HEAD'], cwd=tmp_dir, stdout=PIPE)
+        good_git = checkout.wait() 
+        print('status code from git checkout '+str(good_git))
+
+        print('inside: '+str(os.listdir(tmp_dir)))
+
+        sys.stdout.flush()
+
+        test_p = Popen(['mocha', '-R', 'json-cov'], cwd=tmp_dir, stdout=PIPE)
         test_p.wait()
-        conn.send(test_p.stdout.read()) 
+        conn.send(bytes(test_p.stdout.read().decode().rstrip().replace('\n', ''), 'utf8'))
      
 s.close()

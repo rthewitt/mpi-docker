@@ -1,3 +1,7 @@
+/*
+ * Not currently using Myelin as a runner/Docker image
+ * Has been consolidated into controller for the time being 
+ */
 var fs = require('fs'),
     runnerUtil = require('../runner-util');
 

@@ -6,20 +6,15 @@ var express = require('express'),
     httpProxy = require('http-proxy');
     streamBuffers = require('stream-buffers'),
     fs = require('fs'),
-    redis = require('redis'),
     ProxyRouter = require('./lib/proxy-router'),
     env = process.env.NODE_ENV || 'development',
     config = require('./config/config')[env];
 
 //var agent = require('webkit-devtools-agent');
 
-    var host = config.dockerOpts.host || 'localhost';
-    var hostname = config.dockerOpts.hostname;
     var port = config.port;
         internalPort = config.internalPort || 8887;
         
-    var redisPort = process.env.DB_PORT_6379_TCP_PORT,
-        redisHost = process.env.DB_PORT_6379_TCP_ADDR;
 
     var myelinPort = process.env.MYELIN_PORT_7777_TCP_PORT,
         myelinHost = process.env.MYELIN_PORT_7777_TCP_ADDR;
@@ -30,58 +25,10 @@ var express = require('express'),
             process.argv[process.argv.indexOf('-p')+1] : null; 
     }
     */
-    if(!redisPort || !redisHost) console.log('FATAL: Redis bridge not found!');
-
-    var proxyRouter = new ProxyRouter({
-          backend: redis.createClient(redisPort, redisHost),
-          cache_ttl: 5
-       });
-
-    var proxy = httpProxy.createProxyServer({target: { port: 80 }});
-
-    /*
-     if container is used, no good, error
-     --check if container is free in pool, last ditch effort check all students for container use
-     if container is free, mark as used in Redis, set user:container in Redis, then redirect user to container
-    */
-    var assignContainer = function(req, res, userId, refId) {
-        var resJSON = '';
-        var params = '';
-        if(userId || !!refId) {
-            params += '?'
-            params += userId ? 'userId='+userId : ''; 
-            params += !!refId ? 'refId='+refId : ''; 
-        }
-        console.log('trying: params='+params);
-        var assReq = http.request({ host: 'localhost', path: '/assign'+params, port: internalPort }, function(wRes) {
-            wRes.on('err', function(err) { console.log('error: '+err);} );
-            wRes.on('data', function(chunk) {
-                resJSON += chunk;
-                try { 
-                    var wObj = JSON.parse(resJSON);
-                        proxyRouter.isContainerFree(wObj.workspace, function(isOk) {
-                            if(isOk) {
-                                proxyRouter.setSessionForContainer('SOMEBODY_SESSION', wObj.workspace);
-                                proxyRouter.setRouteForContainer(wObj.workspace, wObj.ip, wObj.port);
-                                var urlParts = url.parse(req.url);
-                                var TEMP_location = 'http://'+wObj.workspace+'.localhost.com';
-                                res.writeHead(302, { location: TEMP_location });
-                                res.end();
-                            } else throw new Error('CONTAINER IS NOT REALLY FREE, HANDLE ME!!'); // TODO
-                        }) 
-                } catch(ex) {
-                    console.log('Error: '+ex);
-                }
-            });
-        });
-        assReq.end();
-    };
-
-    proxy.on('error', function(err) {
-        console.log('Proxy error: '+err);
-    });
 
 
+
+/*
     var proxyServer = http.createServer(function(req, res) {
 
        //console.log("Received a request");
@@ -95,13 +42,9 @@ var express = require('express'),
        var locAction = hostname.split('.')[0];
 
        if(locAction === 'attempt') { 
-           // TODO session id, cache
-           if(kataId) assignContainer(req, res, userId, kataId);
-           else throw new Error('Missing challenge/lesson ID');
-             //     res.writeHead(500);
-             //     res.end();
-       } else if(locAction === 'test') {
-           proxy.web(req, res, { target: ('http://localhost:8887') });
+           // moved to c9 // VERIFY 
+       } else if(locAction === 'test') { // TODO make this an auth request
+           proxy.web(req, res, { target: ('http://localhost:8887'+urlParts.pathname) });
        } else { // 3. Container in URL
            var workspaceId = locAction;
 
@@ -119,41 +62,12 @@ var express = require('express'),
                });
                myReq.end();
            } else {
-               proxyRouter.lookupRouteForContainer(workspaceId, function(route) {
-                   if(route) { // redirect to container
-                       proxy.web(req, res ,{
-                           target: ('http://'+route.host+':'+route.port)
-                       }); 
-                   } else throw new Error('404 Workspace Not Found');
-                 //     res.writeHead(404);
-                 //     res.end();
-               });
+               // moved to c9 // VERIFY
            }
        }
     });
-
-    proxyServer.on('upgrade', function(req, socket, head) {
-        console.log('upgrade received');
-        var workspace = req.headers.host.split('.')[0];
-        proxyRouter.lookupRouteForContainer(workspace, function(route) {
-            proxy.ws(req, socket, head, { 
-                target: ('http://'+route.host+':'+route.port)
-            });
-        });
-    });
-
-    proxyServer.on('error', function(err) {
-        console.log('proxyServer error: '+err);
-    });
-    
-    proxyServer.listen(port);
-
-
-/*--------------------------------------------------------------------------------
-    This is a test UI for code submission, and for direct container interaction
-----------------------------------------------------------------------------------*/
-
-
+    //proxyServer.listen(port);
+    */
 
     function errResponse(error) {
         error = error || new Error();
@@ -198,15 +112,15 @@ var express = require('express'),
 
     var app = express();
 
-
     // setup runners
     var runners = {};
     var Basilisk = require('./lib/basilisk')(config);
     var runners = Basilisk.init(config.runners)
 
-    require('./config/express')(app, config);
+    var server = require('./config/express')(app, config);
     require('./config/routes')(app, runners);
 
-    app.listen(internalPort);
+    // we modify server directly, so no app.listen()
+    server.listen(port); 
 
     exports = module.exports = app;

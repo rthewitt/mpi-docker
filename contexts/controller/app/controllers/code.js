@@ -2,9 +2,10 @@ module.exports = function(runner) {
     var routes = {};
 
     routes.show = function(req, res) {
-        res.sendfile('/index.html', {root: '../../public'});
+        res.sendfile('/index.html', {root: './public'});
     };
 
+    // TODO Use service layer method now!
     routes.eval = function(req, res) {
 
         var buf = new Buffer(body.toString('binary'), 'binary');
@@ -23,7 +24,7 @@ module.exports = function(runner) {
             if(!!err) res.send(errResponse(err));
             // modify instrument to take an initial time
             job.instrument('sending test results.');
-            res.send({results: results});
+            res.json({results: results});
         });
     };
 

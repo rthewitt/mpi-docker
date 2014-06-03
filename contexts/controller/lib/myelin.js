@@ -1,9 +1,14 @@
 var fs = require('fs'),
     git = require('git-node'),
     ejs = require('ejs'),
+    mktemp = require('mktemp'),
+    Ignore = require('fstream-ignore'),
+    tar = require('tar'),
+    zlib = require('zlib'),
     util = require('util');
 
-var Myelin = function() {
+module.exports = Myelin = function(codeService) {
+    this.codeService = codeService;
 };
 
 Myelin.prototype.initializeBare = function(path) {
@@ -26,78 +31,116 @@ Myelin.prototype.cloneFromUrl = function(url, workspaceId) {
     }
 };
 
-Myelin.prototype.testUserSubmition = function() {
+
+Myelin.prototype.getProtoFromGithub = function(id, cb) {
+    //var url = "git@github.com:/rthewitt/"+id;
+    var url = "https://github.com/rthewitt/"+id+".git";
+    var remote = git.remote(url);
+
+    var tmpPath = mktemp.createDirSync(util.format("%s-XXXXXX", id));
+    var tmpRepo = git.repo(tmpPath);
+
+    console.log('creating temp repo at: '+tmpPath);
+
+    tmpRepo.fetch(remote, {}, function (err) {
+        if (err) cb(err, null);
+        else cb(null, tmpPath);
+    });
 };
 
-module.exports = Myelin;
+// We may have these in volume, db, gitlab, github
+// Regardless, there should be a cache of recently
+// obtained challenges. Avoid cloning if possible.
+Myelin.prototype.getChallengePrototype = function(id, cb) {
+    this.getProtoFromGithub(id, cb);
+};
 
-/*
- * COMES FROM JS-GIT TEST FOLDER
- */
-
-/*
-*  1. load config file
-*  2. load template file based on config (stub)
-*  3. use existing sting to merge with template
-*  4. create tree 
-*/
-// TODO test with multiple commits on remote
-
-var url = "http://localhost/git/001";
-var remote = git.remote(url);
-var merged = git.repo("merged");
-
-merged.fetch(remote, {}, function (err) {
-    if (err) throw err;
-    loadCommit("HEAD");
-});
-
-var CHEATING;
-
-function loadCommit(hashish) {
-  merged.loadAs("commit", hashish, onCommit);
+function loadCommit(repo, hashish, onCommit) {
+    repo.loadAs("commit", hashish, onCommit);
 }
 
-function onCommit(err, commit, hash) {
-  if (err) throw err;
-  //console.log("COMMIT", hash, commit);
-  CHEATING = hash;
-  loadTree(commit.tree);
-  if (commit.parents) {
-    commit.parents.forEach(loadCommit);
-  }
-}
+// pass path or repo
+Myelin.prototype.mergeSolution = function(userSolution, tmp, cb) {
+    var tmpRepo = (typeof tmp === 'string') ? git.repo(tmp) : tmp;
 
-function loadTree(hash) {
-  merged.loadAs("tree", hash, onTree);
-}
+    // TODO understand what needs to be loaded and why
+    // TODO test with multiple commits on remote
+    var CHEATING;
 
-function onTree(err, tree, hash) {
-  if (err) throw err;
-  //console.log("TREE", hash, tree);
-  for(var e in tree) {
-      var entry = tree[e];
-      if(entry.name !== 'config.js') continue;
-      else {
-        merged.loadAs("text", entry.hash, function(err, file) {
-            // STUB
-            var stub = __dirname + '/stub';
-            var userSolution = fs.readFileSync(stub, 'utf-8');
-            // we may actually want to use a properties file or something
-            try {
-                var config = requireFromString(file);
-                var templatePath = config.templatePath || '/userSol.ejs';
-                var templateName = templatePath.split('/')[1];
-                for(var oe in tree) {
-                    if(tree[oe].name === templateName) 
-                        merged.loadAs("text", tree[oe].hash, mergeTemplate(userSolution, templateName, tree, CHEATING));
-                }
-            } catch(err) {
-                console.log('problem loading config: '+err);
-            }
+    function myOnCommit(err, commit, hash) {
+      if (err) throw err;
+      CHEATING = hash;
+      loadTree(tmpRepo, commit.tree, myOnTree);
+      if (commit.parents) {
+        commit.parents.forEach(function(e, i, coll) {
+            // Add some logic here
+            tmpRepo.loadAs(e, myOnCommit);
         });
       }
-  }
+    }
+
+    // Will be called multiple times, so CHANGE THIS
+    function myOnTree(err, tree, hash) {
+      if (err) throw err;
+      //console.log("TREE", hash, tree);
+      tree.forEach(function(entry, index, coll) {
+          if(entry.name === 'config.js') {
+            tmpRepo.loadAs("text", entry.hash, function(err, file) {
+                // we may actually want to use a properties file or something
+                try {
+                    var config = requireFromString(file);
+                    // TODO actually get the appropriate template
+                    // also consider an actual file update instead of template...
+                    var templatePath = config.templatePath || '/userSol.ejs';
+                    var templateName = templatePath.split('/')[1];
+                    coll.forEach(function(otherEntry) {
+                        if(otherEntry.name === templateName) 
+                            tmpRepo.loadAs("text", otherEntry.hash, function(err, template) {
+                                var model = {
+                                    changes: {
+                                        template: template,
+                                        solution: userSolution
+                                    },
+                                    filename: templateName, // TODO why does this exist
+                                    parent: {
+                                        tree: coll,
+                                        hash: CHEATING
+                                    },
+                                    repo: tmpRepo
+                                }
+                                console.log('reached commit changes');
+                                commitChanges(model, cb);
+                            });
+                    });
+                } catch(err) {
+                    console.log('problem loading config: '+err);
+                }
+            });
+          }
+      });
+    }
+
+      loadCommit(tmpRepo, 'HEAD', myOnCommit);
+};
+
+Myelin.prototype.getAsTarballStream = function(repoPath) {
+    var gzStream = zlib.createGzip()
+    // possibly add these ignore files in Myelin
+    Ignore({ path: repoPath, ignoreFiles: [".ignore", ".gitignore"] })
+        .on("child", function(c) {
+            console.error(c.path.substr(c.root.path.length + 1));
+        })
+        .on('error', function(e) {
+            console.error(e); // err callback
+        }) // ??
+        .pipe(tar.Pack())
+        .pipe(gzStream);
+
+    return gzStream;
+}
+
+function loadTree(repo, hash, onTree) {
+  repo.loadAs("tree", hash, onTree);
 }
 
 function requireFromString(src, filename) {
@@ -107,47 +150,45 @@ function requireFromString(src, filename) {
     return m.exports;
 }
 
+// Change model to be future proof (new API on js-git master)
+function commitChanges(model, done) {
+    var mergedSolution = ejs.render(model.changes.template, {
+        user: { solution: model.changes.solution },
+        filename: model.filename // FIXME ??? does this need to exist?
+    });
+    console.log('MERGED::: \n'+mergedSolution); // TODO remove!
+    console.log('mergedSolution done, now saving');
+    model.repo.saveAs('blob', mergedSolution, function(err, hash) {
+            console.log('NEW-BLOB='+hash);
+        if(err) throw err;
+        //var jsName = filename.replace(new RegExp('ejs$'), 'js');
 
-function mergeTemplate(solution, filename, parentTree, parentHash) {
-    return function(err, template) {
-        if(err) throw err; // TODO
-        var mergedSolution = ejs.render(template, {
-            user: { solution: solution },
-            filename: filename // FIXME
+        var treeObj = {};
+        model.parent.tree.forEach(function(entry){
+            treeObj[entry.name] = { mode: entry.mode, hash: entry.hash };
         });
-        merged.saveAs('blob', mergedSolution, function(err, hash) {
-                console.log('NEW-BLOB='+hash);
+
+        // new solution file
+        var jsName = "userSol.js";
+        treeObj[jsName] = { mode: 0100644, hash: hash };
+
+        model.repo.saveAs('tree', treeObj, function(err, treeHash) {
             if(err) throw err;
-            //var jsName = filename.replace(new RegExp('ejs$'), 'js');
-
-            var treeObj = {};
-            for(var e in parentTree) {
-                var entry = parentTree[e];
-                treeObj[entry.name] = { mode: entry.mode, hash: entry.hash };
-            }
-            // new solution file
-            var jsName = "userSol.js";
-            treeObj[jsName] = { mode: 0100644, hash: hash };
-
-            merged.saveAs('tree', treeObj, function(err, treeHash) {
-                if(err) throw err;
-                console.log('TREE='+treeHash);
-                merged.saveAs('commit', {
-                    parents: [parentHash],
-                    tree: treeHash,
-                    author: { name: "Me", email: "nope@nope.com", date: new Date },
-                    message: "generated"
-                }, function(err, commitHash){
+            console.log('TREE='+treeHash);
+            model.repo.saveAs('commit', {
+                parents: [model.parent.hash],
+                tree: treeHash,
+                author: { name: "Me", email: "nope@nope.com", date: new Date },
+                message: "generated"
+            }, function(err, commitHash){
                 console.log('COMMIT='+commitHash);
-                    if(err) throw err;
-                    merged.setHead('refs/heads/master', function(err){if(err) throw err;
-                        merged.updateHead(commitHash, function(err) {
-                            if(err) throw err;
-                            console.log("damn that's nasty");
-                        });
-                    });
+                if(err) throw err;
+                model.repo.setHead('refs/heads/master', function(err){if(err) throw err;
+                    model.repo.updateHead(commitHash, done);
                 });
             });
         });
-    };
+    });
 }
+
+
