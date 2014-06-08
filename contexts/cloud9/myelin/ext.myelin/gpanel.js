@@ -134,8 +134,9 @@ module.exports = ext.register('ext/myelin/gpanel', {
     }, this));
 
     this.projectNext.addEventListener('click', __bind(function() {
-        var stubbedSolution = 'glob.doMeSolid = function (name) { var predefVar = "done solid"; return (!!name) ? (name+" "+predefVar) : predefVar; };';
-      return this.ajaxSubmitHandler('id=001&solution='+encodeURIComponent(stubbedSolution), 'Submitting, please wait...');
+        var stubbedSolution = 'this.doMeSolid = function (name) { var predefVar = "done solid"; return (!!name) ? (name+" "+predefVar) : predefVar; };';
+        // TODO where to get id?  Easy if we use ajax, but preloading gives no opportunity
+      return this.ajaxSubmitHandler('id=example&solution='+encodeURIComponent(stubbedSolution), 'Submitting, please wait...');
     }, this));
 
     // will need to add arguments, etc
@@ -277,6 +278,7 @@ module.exports = ext.register('ext/myelin/gpanel', {
             url: url,
             params: params,
             success: function(data) {
+                window.myResults = data; // XXX
                 var tmpResults = JSON.parse(data).results;
                 var testResults = JSON.parse(tmpResults);
                 for(var p = 0; p < testResults.passes.length; p++) {

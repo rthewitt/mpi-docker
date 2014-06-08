@@ -145,7 +145,7 @@ Myelin.prototype.mergeSolution = function(userSolution, tmp, cb) {
     // Will be called multiple times, so CHANGE THIS
     function myOnTree(err, tree, hash) {
       if (err) throw err;
-      //console.log("TREE", hash, tree);
+      console.log("TREE", util.inspect(tree));
       tree.forEach(function(entry, index, coll) {
           if(entry.name === 'config.js') {
             tmpRepo.loadAs("text", entry.hash, function(err, file) {
@@ -154,27 +154,38 @@ Myelin.prototype.mergeSolution = function(userSolution, tmp, cb) {
                     var config = requireFromString(file);
                     // TODO actually get the appropriate template
                     // also consider an actual file update instead of template...
-                    var templatePath = config.templatePath || '/userSol.ejs';
-                    var templateName = templatePath.split('/')[1];
-                    coll.forEach(function(otherEntry) {
-                        if(otherEntry.name === templateName) 
-                            tmpRepo.loadAs("text", otherEntry.hash, function(err, template) {
-                                var model = {
-                                    changes: {
-                                        template: template,
-                                        solution: userSolution
-                                    },
-                                    filename: templateName, // TODO why does this exist
-                                    parent: {
-                                        tree: coll,
-                                        hash: CHEATING
-                                    },
-                                    repo: tmpRepo
-                                }
-                                console.log('reached commit changes');
-                                commitChanges(model, cb);
-                            });
-                    });
+                    console.log('CONFIG: '+util.inspect(config));
+                    config.templates.forEach(function(tpl) {
+                        var templatePath = util.format('%s/%s', config.templateDir, tpl);
+                        var templateName = tpl;
+                        coll.forEach(function(baseFolder) {
+                            if(baseFolder.name === config.templateDir) {
+                                loadTree(tmpRepo, baseFolder.hash, function(err, tDir, hash) {
+                                    if(err) throw err; // TODO
+                                    tDir.forEach(function(tFile) {
+                                        if(tFile.name === templateName)
+                                            tmpRepo.loadAs("text", tFile.hash, function(err, template) {
+                                                var model = {
+                                                    changes: {
+                                                        template: template,
+                                                        solution: userSolution
+                                                    },
+                                                    filename: templateName, 
+                                                    solutionDir: config.solutionDir,
+                                                    parent: {
+                                                        tree: coll, // TODO check if this works now that we have subdirectory
+                                                        hash: CHEATING
+                                                    },
+                                                    repo: tmpRepo
+                                                }
+                                                console.log('reached commit changes');
+                                                commitChanges(model, cb);
+                                            });
+                                    });
+                                });
+                            }
+                        });
+                    })
                 } catch(err) {
                     console.log('problem loading config: '+err);
                 }
@@ -224,33 +235,40 @@ function commitChanges(model, done) {
     model.repo.saveAs('blob', mergedSolution, function(err, hash) {
             console.log('NEW-BLOB='+hash);
         if(err) throw err;
-        //var jsName = filename.replace(new RegExp('ejs$'), 'js');
 
-        var treeObj = {};
-        model.parent.tree.forEach(function(entry){
-            treeObj[entry.name] = { mode: entry.mode, hash: entry.hash };
-        });
+        var sDir = {};
+        sDir[model.filename] = { mode: 0100644, hash: hash };
 
-        // new solution file
-        var jsName = "userSol.js";
-        treeObj[jsName] = { mode: 0100644, hash: hash };
+        model.repo.saveAs('tree', sDir, function(err, sDirHash) {
+            var treeObj = {};
+            model.parent.tree.forEach(function(entry){
+                // overwrite solution directory with user files if it exists
+                // hint: we should remove this by now, or store it elsewhere
+                if(entry.name === model.solutionDir) treeObj[entry.name] = { mode: 040000, hash: sDirHash };
+                else treeObj[entry.name] = { mode: entry.mode, hash: entry.hash };
+            });
 
-        model.repo.saveAs('tree', treeObj, function(err, treeHash) {
-            if(err) throw err;
-            console.log('TREE='+treeHash);
-            model.repo.saveAs('commit', {
-                parents: [model.parent.hash],
-                tree: treeHash,
-                author: { name: "Me", email: "nope@nope.com", date: new Date },
-                message: "generated"
-            }, function(err, commitHash){
-                console.log('COMMIT='+commitHash);
+            treeObj[model.filename] = { mode: 0100644, hash: hash };
+
+            model.repo.saveAs('tree', treeObj, function(err, treeHash) {
                 if(err) throw err;
-                model.repo.setHead('refs/heads/master', function(err){if(err) throw err;
-                    model.repo.updateHead(commitHash, done);
+                console.log('TREE='+treeHash);
+                model.repo.saveAs('commit', {
+                    parents: [model.parent.hash],
+                    tree: treeHash,
+                    author: { name: "Me", email: "nope@nope.com", date: new Date },
+                    message: "generated"
+                }, function(err, commitHash){
+                    console.log('COMMIT='+commitHash);
+                    if(err) throw err;
+                    model.repo.setHead('refs/heads/master', function(err){if(err) throw err;
+                        model.repo.updateHead(commitHash, done);
+                    });
                 });
             });
+
         });
+
     });
 }
 
