@@ -1,7 +1,4 @@
-var Myelin = require('../../lib/myelin');
-var myelin = new Myelin(); 
-
-module.exports = function(codeService) {
+module.exports = function(myelin, codeService) {
     var routes = {};
 
     routes.show = function(req, res) {
@@ -27,8 +24,24 @@ module.exports = function(codeService) {
         }
     };
 
-    routes.submitChallenge = function(req, res) {
+    routes.TODO = function(req, res) {
+        res.end('TODO'); // TODO
+    };
 
+    routes.checkoutAttempt = function(req, res) {
+        return routes.checkout(req, res, false);
+    };
+
+    routes.checkoutEdit = function(req, res) {
+        return routes.checkout(req, res, true);
+    };
+
+    routes.checkout = function(req, res, isEdit) {
+        console.log('TODO: edit='+isEdit);
+    };
+
+    routes.submitChallenge = function(req, res) {
+        console.log('received submission request');
         var id = req.body.id;
         var solution = req.body.solution;
 
@@ -36,7 +49,7 @@ module.exports = function(codeService) {
             if(err) throw err;
             console.log('received path: '+tmpPath);
             myelin.mergeSolution(solution, tmpPath, function(err) {
-                if(err) throw err;
+                if(err) throw err; 
                 console.log('after merged');
                 var tgzStream = myelin.getAsTarballStream(tmpPath);
 
@@ -51,6 +64,10 @@ module.exports = function(codeService) {
         });
     };
 
+    routes.notFound = function(req, res) {
+        res.writeHead(404);
+        res.end();
+    };
+
     return routes;
 };
-

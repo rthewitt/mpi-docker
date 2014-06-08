@@ -20,6 +20,7 @@ module.exports = {
                 name: 'c9',
                 image: 'cloud9',
                 cmd: ["/cloud9/bin/cloud9.sh", "student", "-l", "0.0.0.0", "-w", "/workspace"],
+                //cmd: ["/usr/local/bin/cheat.sh"],
                 memory: MEM_BASE,
                 volumes: { "/workspace": {} },
                 exposed: { "80/tcp": {} },

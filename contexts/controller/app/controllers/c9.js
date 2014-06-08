@@ -1,6 +1,6 @@
 var util = require('util');
 
-module.exports = function(runner, proxy, proxyRouter) {
+module.exports = function(runner, proxy, proxyRouter, myelin) {
     var routes = {};
 
     routes.proxy = function(req, res) {
@@ -17,7 +17,16 @@ module.exports = function(runner, proxy, proxyRouter) {
        });
     };
 
-    routes.assign = function(req, res) {
+    routes.assignAttempt = function(req, res) {
+        return routes.assign(req, res, false);
+    };
+
+    routes.assignEdit = function(req, res) {
+        return routes.assign(req, res, true);
+    };
+
+    // Assume they have no workspace for now
+    routes.assign = function(req, res, isEdit) {
         var userId = req.query.userId;
         var kataId = req.params.refId;
         try {
@@ -31,6 +40,11 @@ module.exports = function(runner, proxy, proxyRouter) {
                         proxyRouter.setRouteForContainer(job.workspace, job.ipAddr, job.commPort);
                         var TEMP_location = 'http://'+job.workspace+'.localhost.com';
                         res.redirect(302, TEMP_location);
+
+                    myelin.loadChallengeIntoWorkspace(kataId, job.workspace, isEdit, function(err) {
+                        if(err) throw err; // TODO
+                    });
+
                     } else throw new Error('CONTAINER IS NOT REALLY FREE, HANDLE ME!!'); // TODO
                 });
             });

@@ -176,16 +176,18 @@ module.exports = ext.register("ext/myelin/codetour", {
         };
         scp.showTreePanel = function() {
             panels.activate(fileTree);
-        }
+        };
         scp.codeBubble = function(tokenId) {
             var r = this.fileMarkers[tokenId].range;
-            this.scrollToLine = function(r.start.row, r.start.column, false);
+            // This is all kinds of messed up.  I think lines were joined by mistake.
+            // This is a function CALL
+            scp.scrollToLine(r.start.row, r.start.column, false);
             var amlEditor = require('ext/code/code').amlEditor;
             var markerDiv = (apf.XPath || apf.runXpath() || apf.XPath).selectNodes('DIV[2]/DIV[1]/DIV[2]', amlEditor.$ext);
             markerDiv.getElementsByClassName();
             var tokenDiv = document.getElementsByClassName('mpi-token-'+tokenId)[0]; 
             if(!!tokenDiv) this.currentEl = tokenDiv; // Does this even make sense?
-        }
+        };
         scp.openFile = function(filePath, active, drill) {
             editors.gotoDocument({path: "/workspace/"+window.courseUUID+filePath, active : active});
             ide.dispatchEvent("track_action", {type: "fileopen"});

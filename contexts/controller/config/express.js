@@ -24,7 +24,7 @@ module.exports = function(app, config) {
        */
 
     app.use(express.favicon());
-    app.use(subdomain({ baseUrl: 'localhost.com', prefix: 'workspace', logger: true}));
+    app.use(subdomain({ baseUrl: 'localhost.com', prefix: 'workspace', logger: false }));
 
     app.use(express.bodyParser());
     app.use(express.static(config.root + '/public'));

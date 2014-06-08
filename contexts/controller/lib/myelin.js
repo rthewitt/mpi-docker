@@ -3,10 +3,14 @@ var fs = require('fs'),
     ejs = require('ejs'),
     mktemp = require('mktemp'),
     Ignore = require('fstream-ignore'),
+    mv = require('mv'),
     tar = require('tar'),
     zlib = require('zlib'),
+    exec = require('child_process').exec,
     util = require('util');
 
+// This doesn't seem to be necessary.
+// services can be required from /lib, fix controllers
 module.exports = Myelin = function(codeService) {
     this.codeService = codeService;
 };
@@ -15,7 +19,7 @@ Myelin.prototype.initializeBare = function(path) {
 };
 
 // rename this
-Myelin.prototype.cloneFromUrl = function(url, workspaceId) {
+Myelin.prototype.cloneFromUrl = function(url, workspaceId, cb) {
     console.log('called clone for workspace '+workspaceId);
 
     var remote = git.remote(url);
@@ -23,15 +27,42 @@ Myelin.prototype.cloneFromUrl = function(url, workspaceId) {
     if(fs.existsSync(wsPath)) {
         var gitFolder = git.repo((wsPath+'/.git'));
         gitFolder.fetch(remote, {}, function(err) {
-            if(err) throw err;
-            console.log('finished');
+            if(err) cb(err);
+            else cb(null);
         });
-    } else {
-        console.log('Error: no workspace '+workspaceId+' exists');
-    }
+    } else cb(new Error('Error: no workspace '+workspaceId+' exists'));
+};
+
+// Future: get branch from proto
+// Current: clone, perform logic that would create that branch
+Myelin.prototype.cloneAttemptFromUrl = function(url, workspaceId, cb) {
+    var remote = git.remote(url);
+
+    var tmpPath = mktemp.createDirSync(util.format("/tmp/%s-XXXXXX", workspaceId)); // way too long, not reasonable
+    var tmpRepo = git.repo(tmpPath);
+
+    console.log('creating temp repo at: '+tmpPath);
+
+    var wsPath = '/user_data/workspaces/'+workspaceId;
+
+    var self = this;
+    tmpRepo.fetch(remote, {}, function (err) {
+        if (err) cb(err);
+        else {
+            var promptUser = '// TODO see instructions';
+            self.mergeSolution(promptUser, tmpRepo, function(err) {
+                if(err) throw err; 
+                console.log('after prompt merge');
+                mv(tmpPath, wsPath+'/.git', cb);
+            });
+        }
+    });
+
+
 };
 
 
+// Is used by submit!!! TODO change that
 Myelin.prototype.getProtoFromGithub = function(id, cb) {
     //var url = "git@github.com:/rthewitt/"+id;
     var url = "https://github.com/rthewitt/"+id+".git";
@@ -52,7 +83,39 @@ Myelin.prototype.getProtoFromGithub = function(id, cb) {
 // Regardless, there should be a cache of recently
 // obtained challenges. Avoid cloning if possible.
 Myelin.prototype.getChallengePrototype = function(id, cb) {
-    this.getProtoFromGithub(id, cb);
+    if(foundInCache=false) {
+        // TODO
+    } else {
+        this.getProtoFromGithub(id, cb);
+    }
+};
+
+Myelin.prototype.loadChallengeIntoWorkspace = function(id, workspaceId, isEdit, cb) {
+    // try to load from folder/cache, otherwise clone
+    var wsPath = '/user_data/workspaces/'+workspaceId;
+    if(foundInCache=false) {
+        // TODO get from local fs
+    } else {
+        var url = 'https://github.com/rthewitt/'+id+'.git';
+        var checkoutHead = function(err) {
+            if(err) cb(err);
+            else exec('/usr/bin/git checkout HEAD', { cwd: wsPath }, function(cerr, stdout, stderr) {
+                console.log('STDOUT from myelin checkout? '+(!!stdout)+': ' + stdout);
+                console.log('STDERR from myelin checkout? '+(!!stderr)+': ' + stderr);
+                if(cerr) console.log('CODE: '+cerr.code);
+                var retErr = !!cerr ? cerr : (!!stderr ? stderr : null);
+                cb(retErr); 
+            });
+        };
+        if(isEdit) this.cloneFromUrl(url, workspaceId, checkoutHead);
+        else this.cloneAttemptFromUrl(url, workspaceId, checkoutHead);
+        /* Will place in local storage/cache
+        this.getProtoFromGithub(id, function(err, tmpPath) {
+            if(err) { cb(err); return; }
+            fs.rename(tmpPath, wsPath+'/.git', checkoutHead);
+        });
+        */
+    }
 };
 
 function loadCommit(repo, hashish, onCommit) {

@@ -15,6 +15,7 @@ RUN cd cloud9; npm install
 
 ADD ./myelin/student.js /cloud9/configs/student.js
 ADD ./myelin/ext.myelin /cloud9/plugins-client/ext.myelin
+ADD ./cheat.sh /usr/local/bin/cheat.sh
 
 RUN npm install formidable@latest
 RUN npm install gnu-tools@latest

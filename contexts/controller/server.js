@@ -19,56 +19,6 @@ var express = require('express'),
     var myelinPort = process.env.MYELIN_PORT_7777_TCP_PORT,
         myelinHost = process.env.MYELIN_PORT_7777_TCP_ADDR;
 
-/*
-    if(!port) {
-        port = process.env.CODE_RUNNER_PORT || process.argv.indexOf('-p') > 0 ? 
-            process.argv[process.argv.indexOf('-p')+1] : null; 
-    }
-    */
-
-
-
-/*
-    var proxyServer = http.createServer(function(req, res) {
-
-       //console.log("Received a request");
-
-       var urlParts = url.parse(req.url, true);
-       // get from cookie, fallback to url TODO
-       var userId = urlParts.query.userId;
-       var kataId = urlParts.query.refId;
-
-       var hostname = req.headers.host.split(':')[0];
-       var locAction = hostname.split('.')[0];
-
-       if(locAction === 'attempt') { 
-           // moved to c9 // VERIFY 
-       } else if(locAction === 'test') { // TODO make this an auth request
-           proxy.web(req, res, { target: ('http://localhost:8887'+urlParts.pathname) });
-       } else { // 3. Container in URL
-           var workspaceId = locAction;
-
-           if(!!urlParts.query.action) {
-               console.log('received action: '+util.inspect(urlParts.query));
-               var path = util.format('/%s?workspaceId=%s&userId=%s&refId=%s', urlParts.query.action, workspaceId, userId, kataId);
-               // TODO change this to dynamic based on location
-               path += '&url='+encodeURIComponent('git://github.com/creationix/conquest.git');
-               var myReq = http.request({ host: myelinHost, method: req.method, path: path, port: myelinPort}, function(myRes) {
-                   console.log('STATUS: ' + myRes.statusCode);
-                   console.log('HEADERS: ' + JSON.stringify(myRes.headers));
-               });
-               myReq.on('error', function(e) {
-                   console.log('error contacting myelin via subthalamus: '+e.message)
-               });
-               myReq.end();
-           } else {
-               // moved to c9 // VERIFY
-           }
-       }
-    });
-    //proxyServer.listen(port);
-    */
-
     function errResponse(error) {
         error = error || new Error();
         var timeout = !!error.timeout;
@@ -112,8 +62,7 @@ var express = require('express'),
 
     var app = express();
 
-    // setup runners
-    var runners = {};
+    // This will eventually grow to resemble Architect
     var Basilisk = require('./lib/basilisk')(config);
     var runners = Basilisk.init(config.runners)
 

@@ -23,8 +23,8 @@
         </a:hbox>
         <a:divider />
         <a:hbox pck="start" padding="5" edge="10 10 5 10">
-            <a:button id="projectInit">Initialize Project</a:button>
-            <a:button id="projectNext">Submit Work</a:button>
+            <a:button id="projectInit">Verify</a:button>
+            <a:button id="projectNext">Submit to Server</a:button>
             <a:button id="projectCompile">Compile</a:button>
             <a:button id="lessonInstructions">Instructions</a:button>
             <a:button id="gpanelClose">Close</a:button>
@@ -46,7 +46,7 @@
         kbclose = "true"
         width = "800"
         height = "600">
-        <iframe id="instructionFrame" style="height:100%;width:100%;" src="http://astrocyte:8080/blog"></iframe>
+        <iframe id="instructionFrame" style="height:100%;width:100%;" src=""></iframe>
     </a:window>
     <a:window
         id = "mpiMediaWindow"

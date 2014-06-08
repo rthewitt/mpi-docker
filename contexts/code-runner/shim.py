@@ -100,7 +100,9 @@ while True:
 
         sys.stdout.flush()
 
-        test_p = Popen(['mocha', '-R', 'json-cov'], cwd=tmp_dir, stdout=PIPE)
+        test_p = Popen(['mocha', '-R', 'json'], cwd=tmp_dir, stdout=PIPE)
+        #test_p = Popen(['mocha', '-R', 'html'], cwd=tmp_dir, stdout=PIPE)
+        #test_p = Popen(['mocha', '-R', 'doc'], cwd=tmp_dir, stdout=PIPE)
         test_p.wait()
         conn.send(bytes(test_p.stdout.read().decode().rstrip().replace('\n', ''), 'utf8'))
      
