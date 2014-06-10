@@ -104,7 +104,7 @@ module.exports = function(config) {
             var _report = function(optMessage) {
                 var state = this.state >= WAITING && this.retryCount > 0 ? 
                     util.format('%s (RETRY #%d)', stateNames[this.state], this.retryCount) : stateNames[this.state];
-                var id = !!this.id ? this.id.substring(0,13) : 'NONE';
+                var id = !!this.id ? this.id.substring(0,12) : 'NONE';
                 console.log('%s job %s: %s %s', moment().format(logDateFormat), id, state, optMessage);
             }
             

@@ -19,7 +19,7 @@ module.exports = {
     hook: {
         create: function(cb) {
             console.log('Inside c9 create hook');
-            var workspace = this.id.substr(0, 13);
+            var workspace = this.id.substr(0, 12);
             try {
                 fs.mkdirSync('/user_data/workspaces/'+workspace); 
                 this.workspace = workspace;
