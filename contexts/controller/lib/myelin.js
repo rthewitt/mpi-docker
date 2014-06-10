@@ -82,31 +82,6 @@ Myelin.prototype.loadAttemptIntoWorkspace = function(id, workspaceId, cb) {
             fs.writeFile(filePath, fileObj.content, { encoding: fileObj.encoding }, cb);
         }
     });
-
-    // For reference
-    /*
-    var remote = git.remote(url);
-
-    var tmpPath = mktemp.createDirSync(util.format("/tmp/%s-XXXXXX", workspaceId)); // way too long, not reasonable
-    var tmpRepo = git.repo(tmpPath);
-    */
-};
-
-
-// Is used by submit!!! TODO change that
-Myelin.prototype.getProtoFromGithub = function(id, cb) {
-    var url = "https://github.com/rthewitt/"+id+".git";
-    var remote = git.remote(url);
-
-    var tmpPath = mktemp.createDirSync(util.format("%s-XXXXXX", id));
-    var tmpRepo = git.repo(tmpPath);
-
-    console.log('creating temp repo at: '+tmpPath);
-
-    tmpRepo.fetch(remote, {}, function (err) {
-        if (err) cb(err, null);
-        else cb(null, tmpPath);
-    });
 };
 
 // We may have these in volume, db, gitlab, github
@@ -116,7 +91,19 @@ Myelin.prototype.getChallengePrototype = function(id, cb) {
     if(foundInCache=false) {
         // TODO
     } else {
-        this.getProtoFromGithub(id, cb);
+        var group = 'sudocoder';
+        var url = util.format('http://%s:%s/%s/%s.git', store.host, store.port, group, id);
+        var remote = git.remote(url);
+
+        var tmpPath = mktemp.createDirSync(util.format("/tmp/%s-XXXXXX", id));
+        var tmpRepo = git.repo(tmpPath);
+
+        console.log('creating temp repo at: '+tmpPath);
+
+        tmpRepo.fetch(remote, {}, function (err) {
+            if (err) cb(err, null);
+            else cb(null, tmpPath);
+        });
     }
 };
 

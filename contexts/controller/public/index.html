@@ -5,14 +5,43 @@
     </head>
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
     <script type="text/javascript">
+
+        function getParameterByName(name) {
+                name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+                    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+                                results = regex.exec(location.search);
+                        return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+        }
+
         $(document).ready(function() {
-            $('#language').change(function(){
-                $('#code-test').attr('action', '/'+$(this).val()+'/run');
+
+            var refId = getParameterByName('refId');
+
+            $('#code-test').submit(function(event) {
+                event.preventDefault();
+
+                var data = { id: refId, solution: $('#code').val() };
+
+                var req = $.ajax({
+                    url: '/myelin/submit', 
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data), 
+                    dataType: 'json',
+                    });
+
+                req.done(function(msg) { 
+                    alert(msg.results);
+                    //$('#results').html(msg); 
+                    });
+
+                return false;
             });
         });
     </script>
     <body>
-        <form id="code-test" action="/javascript/run" method="post">
+        <form id="code-test" action="#nope" method="post" onSubmit="return false;">
+            <div id="results"></div>
             <textarea id="code" rows="50" cols="60" name="code" autofocus placeholder="Code for submission"></textarea>
             <select id="language" name="language">
                 <option value="javascript" selected>javascript</option>

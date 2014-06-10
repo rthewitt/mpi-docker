@@ -2,7 +2,9 @@ var express = require('express'),
     subdomain = require('express-subdomain-handler'),
     redis = require('redis'),
     util = require('util'),
+    favicon = require('serve-favicon'),
     httpProxy = require('http-proxy'),
+    bodyParser = require('body-parser'),
     streamBuffers = require('stream-buffers'),
     ProxyRouter = require('../lib/proxy-router');
 //var session = require('cookie-session');
@@ -23,10 +25,10 @@ module.exports = function(app, config) {
        }));
        */
 
-    app.use(express.favicon());
+    //app.use(favicon());
     app.use(subdomain({ baseUrl: config.domain, prefix: 'workspace', logger: false }));
 
-    //app.use(express.bodyParser()); // TODO verify this doesn't break somethihg huge
+    app.use(bodyParser()); 
     app.use(express.static(config.root + '/public'));
     //app.use(require('connect-restreamer')()); // restream body events for proxy
 
