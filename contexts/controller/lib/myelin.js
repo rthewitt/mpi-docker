@@ -1,13 +1,25 @@
 var fs = require('fs'),
     git = require('git-node'),
+    gitlab = require('node-gitlab'),
     ejs = require('ejs'),
     mktemp = require('mktemp'),
     Ignore = require('fstream-ignore'),
     mv = require('mv'),
+    ncp = require('ncp'),
     tar = require('tar'),
+    http = require('http'),
     zlib = require('zlib'),
     exec = require('child_process').exec,
-    util = require('util');
+    util = require('util'),
+    env = process.env.NODE_ENV || 'development',
+    config = require('../config/config')[env];
+
+var store = config.repoStore;
+
+var glClient = gitlab.create({
+    api: util.format('http://%s:%s/api/v3', store.host, store.port),
+    privateToken: config.repoStore.authToken 
+});
 
 // This doesn't seem to be necessary.
 // services can be required from /lib, fix controllers
@@ -15,56 +27,74 @@ module.exports = Myelin = function(codeService) {
     this.codeService = codeService;
 };
 
-Myelin.prototype.initializeBare = function(path) {
+// Why did this exist again?
+Myelin.prototype.copyFromWorkspace = function(workpaceId, cb) {
+    var wsPath = '/user_data/workspaces'+workspaceId;
+    if(fs.existsSync(wsPath)) {
+        var tmpPath = mktemp.createDirSync(util.format("/tmp/%s-XXXXXX", workspaceId)); 
+        ncp(wsPath, tmpPath, function(err) {
+            if(err) cb(new Error('internal error'));
+            else cb(null, tmpPath);
+        });
+    } else cb(new Error('internal error'));
 };
 
-// rename this
-Myelin.prototype.cloneFromUrl = function(url, workspaceId, cb) {
-    console.log('called clone for workspace '+workspaceId);
+// Here we will likely just copy skeleton folder into workspace
+// we can subscribe to the skeleton by listening to gitlab hook
+Myelin.prototype.createChallenge = function(repoPath) {
+    if(fs.existsSync(repoPath)) {
+        var authorRepo = git.repo(repoPath);
+        getConfigAndTree(authorRepo, function(config, tree) {
+            // db info here
+            // TODO save all changes in commit?
+        });
+    }
+}
 
+Myelin.prototype.cloneFromUrl = function(url, dirPath, cb) {
     var remote = git.remote(url);
-    var wsPath = '/user_data/workspaces/'+workspaceId;
-    if(fs.existsSync(wsPath)) {
-        var gitFolder = git.repo((wsPath+'/.git'));
+    if(fs.existsSync(dirPath)) {
+        var gitFolder = git.repo((dirPath+'/.git'));
         gitFolder.fetch(remote, {}, function(err) {
             if(err) cb(err);
             else cb(null);
         });
-    } else cb(new Error('Error: no workspace '+workspaceId+' exists'));
+    } else cb(new Error('Error: '+dirPath+' does not exist'));
 };
 
-// Future: get branch from proto
-// Current: clone, perform logic that would create that branch
-Myelin.prototype.cloneAttemptFromUrl = function(url, workspaceId, cb) {
+// Get config file
+// touch file with solution name in workspace?
+// alternate: simply do test-url load?
+Myelin.prototype.loadAttemptIntoWorkspace = function(id, workspaceId, cb) {
+    /*
+    var cUrl = util.format('http://%s.%s/api/v3/projects/%d/repository/files?private_token=%s&file_path=%s&ref=master', 
+            config.repoStore.name, config.domain, id, config.repoStore.authToken, 'config.js');
+            */
+
+    glClient.repositoryFiles.get({
+        id: id,
+        file_path: 'prompt/main.js',
+        ref: 'master'
+    }, function(err, fileObj){
+        if(err) cb(err);
+        else {
+            var filePath = util.format('/user_data/workspaces/%s/%s', workspaceId, fileObj.file_name);
+            fs.writeFile(filePath, fileObj.content, { encoding: fileObj.encoding }, cb);
+        }
+    });
+
+    // For reference
+    /*
     var remote = git.remote(url);
 
     var tmpPath = mktemp.createDirSync(util.format("/tmp/%s-XXXXXX", workspaceId)); // way too long, not reasonable
     var tmpRepo = git.repo(tmpPath);
-
-    console.log('creating temp repo at: '+tmpPath);
-
-    var wsPath = '/user_data/workspaces/'+workspaceId;
-
-    var self = this;
-    tmpRepo.fetch(remote, {}, function (err) {
-        if (err) cb(err);
-        else {
-            var promptUser = '// TODO see instructions';
-            self.mergeSolution(promptUser, tmpRepo, function(err) {
-                if(err) throw err; 
-                console.log('after prompt merge');
-                mv(tmpPath, wsPath+'/.git', cb);
-            });
-        }
-    });
-
-
+    */
 };
 
 
 // Is used by submit!!! TODO change that
 Myelin.prototype.getProtoFromGithub = function(id, cb) {
-    //var url = "git@github.com:/rthewitt/"+id;
     var url = "https://github.com/rthewitt/"+id+".git";
     var remote = git.remote(url);
 
@@ -92,12 +122,13 @@ Myelin.prototype.getChallengePrototype = function(id, cb) {
 
 Myelin.prototype.loadChallengeIntoWorkspace = function(id, workspaceId, isEdit, cb) {
     // try to load from folder/cache, otherwise clone
+    console.log('started to load edit');
     var wsPath = '/user_data/workspaces/'+workspaceId;
     if(foundInCache=false) {
-        // TODO get from local fs
+        // TODO get from local fs?
     } else {
-        var url = 'https://github.com/rthewitt/'+id+'.git';
         var checkoutHead = function(err) {
+            console.log('entered checkoutHead, error?: '+err);
             if(err) cb(err);
             else exec('/usr/bin/git checkout HEAD', { cwd: wsPath }, function(cerr, stdout, stderr) {
                 console.log('STDOUT from myelin checkout? '+(!!stdout)+': ' + stdout);
@@ -107,14 +138,14 @@ Myelin.prototype.loadChallengeIntoWorkspace = function(id, workspaceId, isEdit, 
                 cb(retErr); 
             });
         };
-        if(isEdit) this.cloneFromUrl(url, workspaceId, checkoutHead);
-        else this.cloneAttemptFromUrl(url, workspaceId, checkoutHead);
-        /* Will place in local storage/cache
-        this.getProtoFromGithub(id, function(err, tmpPath) {
-            if(err) { cb(err); return; }
-            fs.rename(tmpPath, wsPath+'/.git', checkoutHead);
-        });
-        */
+        var url;
+        if(isEdit) {
+            var group = 'sudocoder';
+            url = util.format('http://%s:%s/%s/%s.git', store.host, store.port, group, id);
+            console.log('url for edit: '+url);
+            var wsPath = '/user_data/workspaces/'+workspaceId;
+            this.cloneFromUrl(url, wsPath, checkoutHead);
+        } else this.loadAttemptIntoWorkspace(id, workspaceId, cb);
     }
 };
 
@@ -133,6 +164,7 @@ Myelin.prototype.mergeSolution = function(userSolution, tmp, cb) {
     function myOnCommit(err, commit, hash) {
       if (err) throw err;
       CHEATING = hash;
+      // follow this through on multiple commits
       loadTree(tmpRepo, commit.tree, myOnTree);
       if (commit.parents) {
         commit.parents.forEach(function(e, i, coll) {
@@ -213,6 +245,25 @@ Myelin.prototype.getAsTarballStream = function(repoPath) {
     return gzStream;
 }
 
+// will provide config (object), tree
+function getConfigAndTree(repo, cb) {
+    loadCommit(repo, 'HEAD', function(err, commit, hash) {
+        repo.loadAs('tree', function(err, tree, hash) {
+            tree.forEach(function(entry, index, coll) {
+                if(entry.name === 'config.js') {
+                    repo.loadAs('text', entry.hash, function(err, file) {
+                        if(err) cb(err);
+                        else {
+                            var config = requireFromString(file);
+                            cb(null, config, tree);
+                        }
+                    });
+                }
+            });
+        });
+    });
+}
+
 function loadTree(repo, hash, onTree) {
   repo.loadAs("tree", hash, onTree);
 }
@@ -247,8 +298,6 @@ function commitChanges(model, done) {
                 if(entry.name === model.solutionDir) treeObj[entry.name] = { mode: 040000, hash: sDirHash };
                 else treeObj[entry.name] = { mode: entry.mode, hash: entry.hash };
             });
-
-            treeObj[model.filename] = { mode: 0100644, hash: hash };
 
             model.repo.saveAs('tree', treeObj, function(err, treeHash) {
                 if(err) throw err;

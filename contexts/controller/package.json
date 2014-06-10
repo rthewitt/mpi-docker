@@ -19,7 +19,10 @@
     "ejs": "1.0.0",
     "moment": "~2.5.1",
     "express-subdomain-handler": "~0.1.0",
-    "mv": "~2.0.0"
+    "mv": "~2.0.0",
+    "ncp": "~0.5.1",
+    "connect-restreamer": "~1.0.0",
+    "node-gitlab": "~0.2.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

@@ -1,8 +1,30 @@
-module.exports = function(runner) {
+module.exports = function(runner, proxy) {
+
+    var storePort = process.env.STORE_PORT_80_TCP_PORT,
+        storeHost = process.env.STORE_PORT_80_TCP_ADDR,
+        storeURI = 'http://'+storeHost+':'+storePort;
+
     var routes = {};
 
     routes.show = function(req, res) {
         res.sendfile('/index.html', {root: './public'});
+    };
+
+    routes.glNotFound = function(req, res) {
+        res.send('gitlab not yet handled');
+    };
+
+    routes.storeProxy = function(req, res) {
+        /* This will be handled elsewhere?
+        var workspace = req.params.workspace;
+        req.workspace = workspace;
+        var undoRegxp = util.format('/workspace/%s', workspace);
+        */
+        console.log('gitlab proxy');
+        console.log('url before: '+req.url);
+        req.url = req.url.replace('/workspace/gitlab', '');
+        console.log('url after: '+req.url);
+        proxy.web(req, res ,{ target: storeURI }); 
     };
 
     // TODO Use service layer method now!

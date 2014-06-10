@@ -24,8 +24,31 @@ module.exports = function(myelin, codeService) {
         }
     };
 
-    routes.TODO = function(req, res) {
-        res.end('TODO'); // TODO
+    // workspaceId, verify=true
+    // why are we even doing this?  It can/should be handled with git/hooks/build-server
+    routes.createNewChallenge = function(req, res) {
+        var userWorkspace = req.query.workspaceId; // TODO get from cookie
+        var verify = req.query.verify;
+        myelin.copyFromWorkspace(workspaceId, function(err, tmpPath) {
+            if(err) {
+                res.writeHead(500);
+                res.end();
+            } else {
+                if(!!verify) {
+                    myelin.getAuthorSolution(solution, tmpPath, function(err) { // TODO
+                        if(err) throw err;
+                        console.log('after merge from author update');
+                    });
+                } else {
+                    myelin.createChallenge(tmpPath, function(err, id) {
+                        if(err) {
+                            res.writeHead(500);
+                            res.end();
+                        } else res.json({ id: id });
+                    });
+                }
+            }
+        });
     };
 
     routes.checkoutAttempt = function(req, res) {

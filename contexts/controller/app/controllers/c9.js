@@ -1,4 +1,6 @@
-var util = require('util');
+var util = require('util'),
+    env = process.env.NODE_ENV || 'development',
+    config = require('../../config/config')[env];
 
 module.exports = function(runner, proxy, proxyRouter, myelin) {
     var routes = {};
@@ -17,8 +19,13 @@ module.exports = function(runner, proxy, proxyRouter, myelin) {
        });
     };
 
+
     routes.assignAttempt = function(req, res) {
         return routes.assign(req, res, false);
+    };
+
+    routes.assignNew = function(req, res) {
+        return routes.assign(req, res, true, true);
     };
 
     routes.assignEdit = function(req, res) {
@@ -26,9 +33,9 @@ module.exports = function(runner, proxy, proxyRouter, myelin) {
     };
 
     // Assume they have no workspace for now
-    routes.assign = function(req, res, isEdit) {
+    routes.assign = function(req, res, isEdit, isNew) {
         var userId = req.query.userId;
-        var kataId = req.params.refId;
+        var kataId = isNew ? 'example' : req.params.refId;
         try {
             runner.run([userId, kataId], kataId, function(err, job) {
                 job.instrument(util
@@ -38,12 +45,12 @@ module.exports = function(runner, proxy, proxyRouter, myelin) {
                     if(isOk) {
                         proxyRouter.setSessionForContainer('SOMEBODY_SESSION', job.workspace);
                         proxyRouter.setRouteForContainer(job.workspace, job.ipAddr, job.commPort);
-                        var TEMP_location = 'http://'+job.workspace+'.localhost.com';
-                        res.redirect(302, TEMP_location);
+                        var location = util.format('http://%s.%s', job.workspace, config.domain);
+                        res.redirect(302, location);
 
-                    myelin.loadChallengeIntoWorkspace(kataId, job.workspace, isEdit, function(err) {
-                        if(err) throw err; // TODO
-                    });
+                        myelin.loadChallengeIntoWorkspace(kataId, job.workspace, isEdit, function(err) {
+                            if(err) throw err; // TODO
+                        });
 
                     } else throw new Error('CONTAINER IS NOT REALLY FREE, HANDLE ME!!'); // TODO
                 });

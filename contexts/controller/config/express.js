@@ -24,10 +24,11 @@ module.exports = function(app, config) {
        */
 
     app.use(express.favicon());
-    app.use(subdomain({ baseUrl: 'localhost.com', prefix: 'workspace', logger: false }));
+    app.use(subdomain({ baseUrl: config.domain, prefix: 'workspace', logger: false }));
 
-    app.use(express.bodyParser());
+    //app.use(express.bodyParser()); // TODO verify this doesn't break somethihg huge
     app.use(express.static(config.root + '/public'));
+    //app.use(require('connect-restreamer')()); // restream body events for proxy
 
     var redisPort = process.env.DB_PORT_6379_TCP_PORT,
         redisHost = process.env.DB_PORT_6379_TCP_ADDR;
@@ -52,13 +53,12 @@ module.exports = function(app, config) {
         console.log('Proxy error: '+err);
     });
 
-    /*
+    /* PROXY DEBUG
     proxy.on('proxyRes', function (res) {
       console.log('RAW Response from the target', JSON.stringify(res.headers, true, 2));
     });
     */
 
-    // TODO update this
     proxyServer.on('upgrade', function(req, socket, head) {
         var workspace = req.headers.host.split('.')[0];
         proxyRouter.lookupRouteForContainer(workspace, function(route) {

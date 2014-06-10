@@ -13,4 +13,4 @@
 #docker rmi mpi:runner
 #docker build -t="mpi:runner" -rm .
 #docker run --link redis:db --link subthalamus:myelin -i -d -v /user_data:/user_data -p 80:2222 --name="controller" mpi:runner
-docker run --link redis:db -i -d -v /user_data:/user_data -p 80:2222 --name="controller" mpi:runner
+docker run --link gitlab:store --link redis:db -i -d -v /user_data:/user_data -p 80:2222 --name="controller" mpi:runner

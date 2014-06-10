@@ -2,12 +2,23 @@ var path = require('path'),
   rootPath = path.normalize(__dirname + '/..');
 
 var MEM_BASE = 134217728;
+var PRIVATE_TOKEN = 'rmmswbw6sWEjP9Ty3xbK';
+
+var storePort = process.env.STORE_PORT_80_TCP_PORT;
+var storeHost = process.env.STORE_PORT_80_TCP_ADDR;
 
 module.exports = {
     development: {
         root: rootPath,
         port: 2222,
         repo: 'mpi',
+        domain: 'localhost.com',
+        repoStore: {
+            name: 'gitlab',
+            host: storeHost,
+            port: storePort,
+            authToken: PRIVATE_TOKEN
+        },
         dockerOpts: {
             socketPath: false,
             hostname: '172.17.42.1',
@@ -48,23 +59,6 @@ module.exports = {
                 exposed: { },
                 active: true
             }]
-        /*
-        ,
-            {
-                name: 'myelin',
-                image: 'subthalamus',
-                cmd: ['/usr/bin/python', '/opt/subthalamus/server'],
-                memory: MEM_BASE,
-                pool: {
-                    refreshIdle: false,
-                    max: 2, // TODO remove pool if pool not needed
-                    min: 1, 
-                    log: false
-                },
-                volumes: { "/user_data": {} },
-                exposed: { },
-                active: true
-            }] */
     },
     test: {},
     production: {}
