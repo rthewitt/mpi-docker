@@ -134,9 +134,13 @@ module.exports = ext.register('ext/myelin/gpanel', {
     }, this));
 
     this.projectNext.addEventListener('click', __bind(function() {
-        var stubbedSolution = 'this.doMeSolid = function (name) { var predefVar = "done solid"; return (!!name) ? (name+" "+predefVar) : predefVar; };';
+        //var stubbedSolution = 'this.doMeSolid = function (name) { var predefVar = "done solid"; return (!!name) ? (name+" "+predefVar) : predefVar; };';
+        var openEditor = editors.currentEditor.amlEditor.$editor;
+        var codeDoc = openEditor.session.getDocument();
+        var solution = codeDoc.getValue();
         // TODO where to get id?  Easy if we use ajax, but preloading gives no opportunity
-      return this.ajaxSubmitHandler('id=example&solution='+encodeURIComponent(stubbedSolution), 'Submitting, please wait...');
+        // Redis?  That seems fragile.  Cookie?  That seems ugly.
+      return this.ajaxSubmitHandler('id=greetings&solution='+encodeURIComponent(solution), 'Submitting, please wait...');
     }, this));
 
     // will need to add arguments, etc

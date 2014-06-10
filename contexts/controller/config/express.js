@@ -28,9 +28,11 @@ module.exports = function(app, config) {
     //app.use(favicon());
     app.use(subdomain({ baseUrl: config.domain, prefix: 'workspace', logger: false }));
 
-    app.use(bodyParser()); 
+    // BodyParser interferes with POST requests during proxy.
+    // a simpler method would be to exclude rather than include
+    app.use('/myelin/*', bodyParser()); 
+    app.use('/workspace/:workspace/myelin/*', bodyParser()); 
     app.use(express.static(config.root + '/public'));
-    //app.use(require('connect-restreamer')()); // restream body events for proxy
 
     var redisPort = process.env.DB_PORT_6379_TCP_PORT,
         redisHost = process.env.DB_PORT_6379_TCP_ADDR;

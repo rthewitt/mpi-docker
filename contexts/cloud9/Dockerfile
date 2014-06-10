@@ -13,8 +13,9 @@ RUN /usr/local/lib/node_modules/sm/bin/sm install-command
 RUN git clone https://github.com/ajaxorg/cloud9.git
 RUN cd cloud9; npm install
 
-ADD ./myelin/student.js /cloud9/configs/student.js
-ADD ./myelin/ext.myelin /cloud9/plugins-client/ext.myelin
+ADD ./student.js /cloud9/configs/student.js
+ADD ./plugins-client/ext.myelin /cloud9/plugins-client/ext.myelin
+ADD ./plugins-server/connect.session.memory /cloud9/plugins-server/connect.session.memory
 ADD ./cheat.sh /usr/local/bin/cheat.sh
 
 RUN npm install formidable@latest

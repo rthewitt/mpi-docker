@@ -176,7 +176,8 @@ var config = [
         secret: "v1234"
     },
     {
-        packagePath: "./connect.session.file",
+        //packagePath: "./connect.session.file",
+        packagePath: "./connect.session.memory",
         sessionsPath: __dirname + "/../.sessions",
         maxAge: 7 * 24 * 60 * 60 * 1000
     },
